@@ -1,4 +1,4 @@
-#
+# This is a test comment
 # Toplevel makefile for OS/161.
 #
 #
