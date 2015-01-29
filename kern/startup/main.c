@@ -96,11 +96,26 @@ boot(void)
 	 */
 
 	kprintf("\n");
-	kprintf("OS/161 base system version %s\n", BASE_VERSION);
+	kprintf("========================================");
+	kprintf("(  ___  )(  ____ \  /  \   / ____ \/  \ ");
+	kprintf("| (   ) || (    \/  \/) ) ( (    \/\/) )");
+	kprintf("| |   | || (_____     | | | (____    | |");
+	kprintf("| |   | |(_____  )    | | |  ___ \   | |");
+	kprintf("| |   | |      ) |    | | | (   ) )  | |");
+	kprintf("| (___) |/\____) |  __) (_( (___) )__) (");
+	kprintf("(_______)\_______)  \____/ \_____/ \____/");
+	kprintf("========================================");
+	
+	kprint("\n Group Members: ");
+	kprintf("\n Robert Shannon (rshannon@buffalo.edu)") 
+	kprintf("\n Jordan Gibson (jcgibson@buffalo.edu)") 
+                                         
+	
+	kprintf("\n OS/161 base system version %s\n", BASE_VERSION);
 	kprintf("%s", harvard_copyright);
 	kprintf("\n");
 
-	kprintf("rshannon's system version %s (%s #%d)\n", 
+	kprintf("system version %s (%s #%d)\n", 
 		GROUP_VERSION, buildconfig, buildversion);
 	kprintf("\n");
 
