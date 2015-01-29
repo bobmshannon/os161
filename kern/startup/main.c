@@ -95,20 +95,16 @@ boot(void)
 	 * dev/generic/console.c).
 	 */
 
-	kprintf("\n");
-	kprintf("========================================");
-	kprintf("(  ___  )(  ____ \  /  \   / ____ \/  \ ");
-	kprintf("| (   ) || (    \/  \/) ) ( (    \/\/) )");
-	kprintf("| |   | || (_____     | | | (____    | |");
-	kprintf("| |   | |(_____  )    | | |  ___ \   | |");
-	kprintf("| |   | |      ) |    | | | (   ) )  | |");
-	kprintf("| (___) |/\____) |  __) (_( (___) )__) (");
-	kprintf("(_______)\_______)  \____/ \_____/ \____/");
-	kprintf("========================================");
-	
-	kprint("\n Group Members: ");
-	kprintf("\n Robert Shannon (rshannon@buffalo.edu)") 
-	kprintf("\n Jordan Gibson (jcgibson@buffalo.edu)") 
+	kprintf("\n\n");
+	kprintf("(  ___  )(  ____ \\  /  \\   / ____ \\/  \\ \n");
+	kprintf("| (   ) || (    \\/  \\/) ) ( (    \\/\\/) )\n");
+	kprintf("| |   | || (_____     | | | (____    | |\n");
+	kprintf("| |   | |(_____  )    | | |  ___ \\   | |\n");
+	kprintf("| |   | |      ) |    | | | (   ) )  | |\n");
+	kprintf("| (___) |/\\____) |  __) (_( (___) )__) (\n");
+	kprintf("(_______)\\_______)  \\____/ \\_____/ \\____/\n\n");
+	kprintf("  Robert Shannon (rshannon@buffalo.edu) \n");
+	kprintf("  Jordan Gibson (jcgibson@buffalo.edu) \n");
                                          
 	
 	kprintf("\n OS/161 base system version %s\n", BASE_VERSION);
