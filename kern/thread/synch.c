@@ -156,6 +156,10 @@ V(struct semaphore *sem)
 //
 // Lock.
 
+/*
+ * This simple lock is implemented using a semaphore
+ * initialized to the value 1.
+ */
 struct lock *
 lock_create(const char *name)
 {
@@ -196,6 +200,7 @@ lock_acquire(struct lock *lock)
 		
 		if(!lock->lk_acquired) {
 			lock->lk_acquired = true;
+			lock->lk_owner = curthread;
 		}
 }
 
@@ -204,15 +209,15 @@ lock_release(struct lock *lock)
 {
 	V(lock->lk_sem); // increment semaphore
 	
-	if(lock->lk_sem->sem_count == 1) {
+	if(lock->lk_sem->sem_count == 1) { // no other thread is waiting for lock
 		lock->lk_acquired = false;
+		lock->lk_owner = NULL;
 	}
 }
 
 bool
 lock_do_i_hold(struct lock *lock)
 {
-        // Write this
 
         (void)lock;  // suppress warning until code gets written
 

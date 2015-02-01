@@ -75,6 +75,7 @@ void V(struct semaphore *);
 struct lock {
         char *lk_name;
 		struct semaphore *lk_sem;
+		struct thread *lk_owner;
 		volatile bool lk_acquired;
         // add what you need here
         // (don't forget to mark things volatile as needed)
