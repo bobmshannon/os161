@@ -87,6 +87,9 @@ sem_destroy(struct semaphore *sem)
         kfree(sem);
 }
 
+/*
+ * Decrement semaphore, aka wait()
+ */
 void 
 P(struct semaphore *sem)
 {
@@ -129,6 +132,12 @@ P(struct semaphore *sem)
 	spinlock_release(&sem->sem_lock);
 }
 
+/*
+ * Increment semaphore, aka signal()
+ *
+ * If semaphore value is > 0, wake up a thread and add
+ * it to the ready queue
+ */
 void
 V(struct semaphore *sem)
 {
@@ -163,8 +172,10 @@ lock_create(const char *name)
                 return NULL;
         }
         
-        // add stuff here as needed
-        
+		lock->lk_sem = sem_create(name, 1);
+		
+		lock->lk_acquired = false;
+
         return lock;
 }
 
@@ -173,8 +184,7 @@ lock_destroy(struct lock *lock)
 {
         KASSERT(lock != NULL);
 
-        // add stuff here as needed
-        
+        sem_destroy(lock->lk_sem);
         kfree(lock->lk_name);
         kfree(lock);
 }
@@ -182,17 +192,21 @@ lock_destroy(struct lock *lock)
 void
 lock_acquire(struct lock *lock)
 {
-        // Write this
-
-        (void)lock;  // suppress warning until code gets written
+        P(lock->lk_sem); // decrement semaphore
+		
+		if(!lock->lk_acquired) {
+			lock->lk_acquired = true;
+		}
 }
 
 void
 lock_release(struct lock *lock)
 {
-        // Write this
-
-        (void)lock;  // suppress warning until code gets written
+	V(lock->lk_sem); // increment semaphore
+	
+	if(lock->lk_sem->sem_count == 1) {
+		lock->lk_acquired = false;
+	}
 }
 
 bool
