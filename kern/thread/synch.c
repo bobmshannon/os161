@@ -203,10 +203,10 @@ lock_acquire(struct lock *lock)
 {
         P(lock->lk_sem); // decrement semaphore
 		
-		if(!lock->lk_acquired) {
+		/*if(!lock->lk_acquired) {
 			lock->lk_acquired = true;
 			lock->lk_owner = curthread;
-		}
+		}*/
 }
 
 void
@@ -214,10 +214,10 @@ lock_release(struct lock *lock)
 {
 	lock->lk_owner = V(lock->lk_sem); // increment semaphore
 	
-	if(lock->lk_sem->sem_count == 1) { // no other thread is waiting for lock
+	/*if(lock->lk_sem->sem_count == 1) { // no other thread is waiting for lock
 		lock->lk_acquired = false;
 		lock->lk_owner = NULL;
-	}
+	}*/
 }
 
 /*
