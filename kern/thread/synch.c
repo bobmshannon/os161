@@ -227,10 +227,9 @@ lock_release(struct lock *lock)
 bool
 lock_do_i_hold(struct lock *lock)
 {
-	if(lock->lk_owner == curthread) {
-		return true;
-	}
-	return false;
+	// TODO
+	(void)lock;
+	return true;
 }
 
 ////////////////////////////////////////////////////////////
@@ -292,4 +291,46 @@ cv_broadcast(struct cv *cv, struct lock *lock)
 	// Write this
 	(void)cv;    // suppress warning until code gets written
 	(void)lock;  // suppress warning until code gets written
+}
+
+////////////////////////////////////////////////////////////
+//
+// Reader Writer Locks
+
+struct rwlock * 
+rwlock_create(const char *name)
+{
+	struct rwlock *rwlock;
+	(void)name;
+	return rwlock;
+}
+
+void 
+rwlock_destroy(struct rwlock *rwlock)
+{
+	(void)rwlock;
+}
+
+void 
+rwlock_acquire_read(struct rwlock *rwlock)
+{
+	(void)rwlock;
+}
+
+void 
+rwlock_release_read(struct rwlock *rwlock)
+{
+	(void)rwlock;
+}
+
+void 
+rwlock_acquire_write(struct rwlock *rwlock)
+{
+	(void)rwlock;
+}
+
+void 
+rwlock_release_write(struct rwlock *rwlock)
+{
+	(void)rwlock;
 }
