@@ -171,10 +171,13 @@ lock_create(const char *name)
         }
 
         lock->lk_name = kstrdup(name);
+		
         if (lock->lk_name == NULL) {
                 kfree(lock);
                 return NULL;
         }
+		
+		lock->lk_holder = NULL;
         
 		lock->lk_sem = sem_create(name, 1);
 		
@@ -187,30 +190,47 @@ void
 lock_destroy(struct lock *lock)
 {
         KASSERT(lock != NULL);
-
+		
+		lock->lk_holder = NULL;
         sem_destroy(lock->lk_sem);
         kfree(lock->lk_name);
-		kfree(lock->lk_owner);
         kfree(lock);
 }
 
 void
 lock_acquire(struct lock *lock)
 {
+	struct thread *mythread;
+	
+	if (CURCPU_EXISTS()) {
+		mythread = curthread;
+		if (lock->lk_holder == mythread) {
+			panic("Deadlock on lock %p\n", lock);
+		}
+	}
+	else {
+		mythread = NULL;
+	}
+	
 	P(lock->lk_sem); // decrement semaphore
+	
+	lock->lk_holder = curthread;
 	
 	/*
 	 * Note to self: how can we keep track of the lock owner?
 	 */
-	 
-	if(!lock->lk_acquired) {
-		lock->lk_acquired = true;
-	}
 }
 
 void
 lock_release(struct lock *lock)
 {
+
+	if (CURCPU_EXISTS()) {
+		KASSERT(lock->lk_holder == curthread);
+	}
+
+	lock->lk_holder = NULL;
+	
 	V(lock->lk_sem); // increment semaphore
 	
 	/*
@@ -218,15 +238,19 @@ lock_release(struct lock *lock)
 	 */
 		 
 	if(lock->lk_sem->sem_count == 1) { // no other thread is waiting for lock
-		lock->lk_acquired = false;
+		
 	}
 }
 
 bool
 lock_do_i_hold(struct lock *lock)
 {
-	(void)lock;
-	return true;
+	if (!CURCPU_EXISTS()) {
+		return true;
+	}
+
+	/* Assume we can read lk_holder atomically enough for this to work */
+	return (lock->lk_holder == curthread);
 }
 
 ////////////////////////////////////////////////////////////
