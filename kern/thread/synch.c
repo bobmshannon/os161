@@ -220,10 +220,6 @@ lock_release(struct lock *lock)
 	}*/
 }
 
-/*
- * Compare the current executing thread to the
- * thread that owns the lock.
- */
 bool
 lock_do_i_hold(struct lock *lock)
 {
