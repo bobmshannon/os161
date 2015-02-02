@@ -88,7 +88,9 @@ sem_destroy(struct semaphore *sem)
 }
 
 /*
- * Decrement semaphore, aka wait()
+ * Decrement semaphore, more commonly known as wait().
+ * Gives calling thread access to protected resource, 
+ * otherwise it is put to sleep and in the waiting queue.
  */
 void 
 P(struct semaphore *sem)
@@ -133,10 +135,8 @@ P(struct semaphore *sem)
 }
 
 /*
- * Increment semaphore, aka signal()
- *
- * If semaphore value is > 0, wake up a thread and add
- * it to the ready queue
+ * Increment semaphore, more commonly known as signal().
+ * Wakes up a sleeping thread and moves it to the ready queue.
  */
 struct thread *
 V(struct semaphore *sem)
