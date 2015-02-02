@@ -1052,7 +1052,7 @@ wchan_sleep(struct wchan *wc)
 /*
  * Wake up one thread sleeping on a wait channel.
  */
-void
+struct thread *
 wchan_wakeone(struct wchan *wc)
 {
 	struct thread *target;
@@ -1068,10 +1068,12 @@ wchan_wakeone(struct wchan *wc)
 
 	if (target == NULL) {
 		/* Nobody was sleeping. */
-		return;
+		return NULL;
 	}
 
 	thread_make_runnable(target, false);
+	
+	return target;
 }
 
 /*

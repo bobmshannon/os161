@@ -60,7 +60,7 @@ void sem_destroy(struct semaphore *);
  *     V (verhogen): increment count.
  */
 void P(struct semaphore *);
-void V(struct semaphore *);
+struct thread * V(struct semaphore *);
 
 
 /*

@@ -138,18 +138,22 @@ P(struct semaphore *sem)
  * If semaphore value is > 0, wake up a thread and add
  * it to the ready queue
  */
-void
+struct thread *
 V(struct semaphore *sem)
 {
+		struct thread *awoken_thread;
+		
         KASSERT(sem != NULL);
 
 	spinlock_acquire(&sem->sem_lock);
 
         sem->sem_count++;
         KASSERT(sem->sem_count > 0);
-	wchan_wakeone(sem->sem_wchan);
-
+	awoken_thread = wchan_wakeone(sem->sem_wchan);
+	
 	spinlock_release(&sem->sem_lock);
+	
+	return awoken_thread;
 }
 
 ////////////////////////////////////////////////////////////
@@ -207,7 +211,7 @@ lock_acquire(struct lock *lock)
 void
 lock_release(struct lock *lock)
 {
-	V(lock->lk_sem); // increment semaphore
+	lock->lk_owner = V(lock->lk_sem); // increment semaphore
 	
 	if(lock->lk_sem->sem_count == 1) { // no other thread is waiting for lock
 		lock->lk_acquired = false;
@@ -218,10 +222,10 @@ lock_release(struct lock *lock)
 bool
 lock_do_i_hold(struct lock *lock)
 {
-
-        (void)lock;  // suppress warning until code gets written
-
-        return true; // dummy until code gets written
+	if(lock->lk_owner == curthread) {
+		return true;
+	}
+	return false;
 }
 
 ////////////////////////////////////////////////////////////
