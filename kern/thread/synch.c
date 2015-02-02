@@ -138,22 +138,18 @@ P(struct semaphore *sem)
  * Increment semaphore, more commonly known as signal().
  * Wakes up a sleeping thread and moves it to the ready queue.
  */
-struct thread *
+void
 V(struct semaphore *sem)
 {
-		struct thread *awoken_thread;
-		
         KASSERT(sem != NULL);
 
 	spinlock_acquire(&sem->sem_lock);
 
         sem->sem_count++;
         KASSERT(sem->sem_count > 0);
-	awoken_thread = wchan_wakeone(sem->sem_wchan);
+		wchan_wakeone(sem->sem_wchan);
 	
 	spinlock_release(&sem->sem_lock);
-	
-	return awoken_thread;
 }
 
 ////////////////////////////////////////////////////////////
@@ -201,29 +197,34 @@ lock_destroy(struct lock *lock)
 void
 lock_acquire(struct lock *lock)
 {
-        P(lock->lk_sem); // decrement semaphore
-		
-		/*if(!lock->lk_acquired) {
-			lock->lk_acquired = true;
-			lock->lk_owner = curthread;
-		}*/
+	P(lock->lk_sem); // decrement semaphore
+	
+	/*
+	 * Note to self: how can we keep track of the lock owner?
+	 */
+	 
+	if(!lock->lk_acquired) {
+		lock->lk_acquired = true;
+	}
 }
 
 void
 lock_release(struct lock *lock)
 {
-	lock->lk_owner = V(lock->lk_sem); // increment semaphore
+	V(lock->lk_sem); // increment semaphore
 	
-	/*if(lock->lk_sem->sem_count == 1) { // no other thread is waiting for lock
+	/*
+	 * Note to self: how can we keep track of the lock owner?
+	 */
+		 
+	if(lock->lk_sem->sem_count == 1) { // no other thread is waiting for lock
 		lock->lk_acquired = false;
-		lock->lk_owner = NULL;
-	}*/
+	}
 }
 
 bool
 lock_do_i_hold(struct lock *lock)
 {
-	// TODO
 	(void)lock;
 	return true;
 }

@@ -78,7 +78,7 @@ void wchan_sleep(struct wchan *wc);
  * The current implementation is FIFO but this is not promised by the
  * interface.
  */
-struct thread * wchan_wakeone(struct wchan *wc);
+void wchan_wakeone(struct wchan *wc);
 void wchan_wakeall(struct wchan *wc);
 
 

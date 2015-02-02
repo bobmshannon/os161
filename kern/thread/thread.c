@@ -1052,11 +1052,10 @@ wchan_sleep(struct wchan *wc)
 /*
  * Wake up one thread sleeping on a wait channel.
  */
-struct thread *
+void
 wchan_wakeone(struct wchan *wc)
 {
 	struct thread *target;
-
 	/* Lock the channel and grab a thread from it */
 	spinlock_acquire(&wc->wc_lock);
 	target = threadlist_remhead(&wc->wc_threads);
@@ -1068,12 +1067,10 @@ wchan_wakeone(struct wchan *wc)
 
 	if (target == NULL) {
 		/* Nobody was sleeping. */
-		return NULL;
+		return;
 	}
 
 	thread_make_runnable(target, false);
-	
-	return target;
 }
 
 /*
