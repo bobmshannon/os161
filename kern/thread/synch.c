@@ -89,7 +89,9 @@ sem_destroy(struct semaphore *sem)
 }
 
 /*
- * Decrement semaphore, more commonly known as wait().
+ * Decrement semaphore, more commonly known as wait()
+ * on some other systems.
+ *
  * Gives calling thread access to protected resource, 
  * otherwise it is put to sleep and in the waiting queue.
  */
@@ -136,8 +138,10 @@ P(struct semaphore *sem)
 }
 
 /*
- * Increment semaphore, more commonly known as signal().
- * Wakes up a sleeping thread and moves it to the ready queue.
+ * Increment semaphore, more commonly known as signal() on some
+ * other systems.
+ *
+ * Wakes up a sleeping thread and moves it to the CPU ready queue.
  */
 void
 V(struct semaphore *sem)
@@ -201,6 +205,16 @@ lock_destroy(struct lock *lock)
         kfree(lock);
 }
 
+/*
+ * Note that we do not need to disable interrupts
+ * here, that is taken care of for us when we calling
+ * the decrement function P().
+ *
+ * If the lock is not currently available at then
+ * the calling thread will be put to sleep. Once
+ * it wakes up, the lk_holder will be updated
+ * accordingly
+ */
 void
 lock_acquire(struct lock *lock)
 {
@@ -209,6 +223,15 @@ lock_acquire(struct lock *lock)
 	lock->lk_holder = curthread;
 }
 
+/*
+ * Note that we do not need to disable interrupts
+ * here, that is taken care of for us when we calling
+ * the decrement function P().
+ *
+ * The call to V() increments the semaphore, and if 
+ * necessary wakes up another thread that was waiting
+ * for the lock.
+ */
 void
 lock_release(struct lock *lock)
 {
