@@ -158,8 +158,9 @@ V(struct semaphore *sem)
 // Lock.
 
 /*
- * This simple lock is implemented using a semaphore
- * initialized to the value 1.
+ * This simple lock is implemented using a binary
+ * semaphore, or a counting semaphore initialized
+ * to the value 1.
  */
 struct lock *
 lock_create(const char *name)
@@ -193,7 +194,9 @@ lock_destroy(struct lock *lock)
         KASSERT(lock != NULL);
 		
 		lock->lk_holder = NULL;
+		
         sem_destroy(lock->lk_sem);
+		
         kfree(lock->lk_name);
         kfree(lock);
 }
@@ -201,8 +204,8 @@ lock_destroy(struct lock *lock)
 void
 lock_acquire(struct lock *lock)
 {
-	P(lock->lk_sem); // decrement semaphore
-	
+	P(lock->lk_sem); 	// decrement semaphore
+
 	lock->lk_holder = curthread;
 }
 
@@ -215,8 +218,7 @@ lock_release(struct lock *lock)
 	
 	lock->lk_holder = NULL;
 
-	V(lock->lk_sem); // increment semaphore
-	
+	V(lock->lk_sem);	// increment semaphore
 }
 
 bool
@@ -252,7 +254,11 @@ cv_create(const char *name)
         }
         
 		cv->cv_wchan = wchan_create(cv->cv_name);
-		
+		if(cv->cv_wchan == NULL) {
+				kfree(cv->cv_name);
+				kfree(cv);
+				return NULL;
+		}
         return cv;
 }
 
@@ -260,9 +266,6 @@ void
 cv_destroy(struct cv *cv)
 {
         KASSERT(cv != NULL);
-
-        // add stuff here as needed
-        
         kfree(cv->cv_name);
 		wchan_destroy(cv->cv_wchan);
         kfree(cv);
@@ -271,31 +274,38 @@ cv_destroy(struct cv *cv)
 void
 cv_wait(struct cv *cv, struct lock *lock)
 {
-	lock_release(lock);
-	wchan_lock(cv->cv_wchan);
-	wchan_sleep(cv->cv_wchan);
-	lock_acquire(lock);
-
-	(void)cv;    // suppress warning until code gets written
-	(void)lock;  // suppress warning until code gets written
+		/* 
+		 * We need to check that the current thread holds the
+		 * that was passed in, otherwise initiate a kernel panic.
+		 */
+		KASSERT(lock->lk_holder == curthread);
+		
+		lock_release(lock);
+		
+		wchan_lock(cv->cv_wchan);
+			wchan_sleep(cv->cv_wchan);
+			
+		lock_acquire(lock);
 }
 
 void
 cv_signal(struct cv *cv, struct lock *lock)
 {
-	wchan_wakeone(cv->cv_wchan);
+		KASSERT(lock->lk_holder == curthread);
 		
-	(void)cv;    // suppress warning until code gets written
-	(void)lock;  // suppress warning until code gets written
+		wchan_wakeone(cv->cv_wchan);
+		
+		(void)lock;
 }
 
 void
 cv_broadcast(struct cv *cv, struct lock *lock)
 {
-	wchan_wakeall(cv->cv_wchan);
+		KASSERT(lock->lk_holder == curthread);
 		
-	(void)cv;    // suppress warning until code gets written
-	(void)lock;  // suppress warning until code gets written
+		wchan_wakeall(cv->cv_wchan);
+		
+		(void)lock;
 }
 
 ////////////////////////////////////////////////////////////
