@@ -313,6 +313,13 @@ cv_wait(struct cv *cv, struct lock *lock)
 		lock_acquire(lock);
 }
 
+/*
+ * The primary difference to note between signal()
+ * and broadcast() is that the former wakes up a
+ * single thread, while the latter wakes up ALL
+ * sleeping threads waiting for the condition.
+ 
+ */
 void
 cv_signal(struct cv *cv, struct lock *lock)
 {
