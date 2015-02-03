@@ -200,46 +200,22 @@ lock_destroy(struct lock *lock)
 void
 lock_acquire(struct lock *lock)
 {
-	struct thread *mythread;
-	
-	if (CURCPU_EXISTS()) {
-		mythread = curthread;
-		if (lock->lk_holder == mythread) {
-			panic("Deadlock on lock %p\n", lock);
-		}
-	}
-	else {
-		mythread = NULL;
-	}
-	
 	P(lock->lk_sem); // decrement semaphore
 	
 	lock->lk_holder = curthread;
-	
-	/*
-	 * Note to self: how can we keep track of the lock owner?
-	 */
 }
 
 void
 lock_release(struct lock *lock)
 {
-
 	if (CURCPU_EXISTS()) {
 		KASSERT(lock->lk_holder == curthread);
 	}
-
-	lock->lk_holder = NULL;
 	
+	lock->lk_holder = NULL;
+
 	V(lock->lk_sem); // increment semaphore
 	
-	/*
-	 * Note to self: how can we keep track of the lock owner?
-	 */
-		 
-	if(lock->lk_sem->sem_count == 1) { // no other thread is waiting for lock
-		
-	}
 }
 
 bool
