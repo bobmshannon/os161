@@ -39,6 +39,7 @@
 #include <thread.h>
 #include <current.h>
 #include <synch.h>
+#include <spl.h>
 
 ////////////////////////////////////////////////////////////
 //
@@ -250,8 +251,8 @@ cv_create(const char *name)
                 return NULL;
         }
         
-        // add stuff here as needed
-        
+		cv->cv_wchan = wchan_create(cv->cv_name);
+		
         return cv;
 }
 
@@ -263,21 +264,27 @@ cv_destroy(struct cv *cv)
         // add stuff here as needed
         
         kfree(cv->cv_name);
+		wchan_destroy(cv->cv_wchan);
         kfree(cv);
 }
 
 void
 cv_wait(struct cv *cv, struct lock *lock)
 {
-        // Write this
-        (void)cv;    // suppress warning until code gets written
-        (void)lock;  // suppress warning until code gets written
+	lock_release(lock);
+	wchan_lock(cv->cv_wchan);
+	wchan_sleep(cv->cv_wchan);
+	lock_acquire(lock);
+
+	(void)cv;    // suppress warning until code gets written
+	(void)lock;  // suppress warning until code gets written
 }
 
 void
 cv_signal(struct cv *cv, struct lock *lock)
 {
-        // Write this
+	wchan_wakeone(cv->cv_wchan);
+		
 	(void)cv;    // suppress warning until code gets written
 	(void)lock;  // suppress warning until code gets written
 }
@@ -285,7 +292,8 @@ cv_signal(struct cv *cv, struct lock *lock)
 void
 cv_broadcast(struct cv *cv, struct lock *lock)
 {
-	// Write this
+	wchan_wakeall(cv->cv_wchan);
+		
 	(void)cv;    // suppress warning until code gets written
 	(void)lock;  // suppress warning until code gets written
 }
