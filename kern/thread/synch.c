@@ -213,7 +213,7 @@ lock_destroy(struct lock *lock)
  * If the lock is not currently available at then
  * the calling thread will be put to sleep. Once
  * it wakes up, the lk_holder will be updated
- * accordingly
+ * accordingly.
  */
 void
 lock_acquire(struct lock *lock)
@@ -305,9 +305,8 @@ cv_wait(struct cv *cv, struct lock *lock)
 		/* Check that the current thread holds the lock */
 		KASSERT(lock->lk_holder == curthread);
 		
-		lock_release(lock);
-		
 			wchan_lock(cv->cv_wchan);	// prevent race conditions if two threads call cv_wait() at the same time
+				lock_release(lock);
 				wchan_sleep(cv->cv_wchan);
 			
 		lock_acquire(lock);
@@ -317,7 +316,7 @@ cv_wait(struct cv *cv, struct lock *lock)
  * The primary difference to note between signal()
  * and broadcast() is that the former wakes up a
  * single thread, while the latter wakes up ALL
- * sleeping threads waiting for the condition.
+ * sleeping threads waiting to be signalled.
  
  */
 void
