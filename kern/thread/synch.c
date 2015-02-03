@@ -294,19 +294,21 @@ cv_destroy(struct cv *cv)
         kfree(cv);
 }
 
+/*
+ * As intended, we need to release the lock and put the 
+ * calling thread to sleep. Then, once it is woken up
+ * again with cv_signal() re-acquire that lock.
+ */
 void
 cv_wait(struct cv *cv, struct lock *lock)
 {
-		/* 
-		 * We need to check that the current thread holds the
-		 * that was passed in, otherwise initiate a kernel panic.
-		 */
+		/* Check that the current thread holds the lock */
 		KASSERT(lock->lk_holder == curthread);
 		
 		lock_release(lock);
 		
-		wchan_lock(cv->cv_wchan);
-			wchan_sleep(cv->cv_wchan);
+			wchan_lock(cv->cv_wchan);	// prevent race conditions if two threads call cv_wait() at the same time
+				wchan_sleep(cv->cv_wchan);
 			
 		lock_acquire(lock);
 }
@@ -317,8 +319,6 @@ cv_signal(struct cv *cv, struct lock *lock)
 		KASSERT(lock->lk_holder == curthread);
 		
 		wchan_wakeone(cv->cv_wchan);
-		
-		(void)lock;
 }
 
 void
@@ -327,8 +327,6 @@ cv_broadcast(struct cv *cv, struct lock *lock)
 		KASSERT(lock->lk_holder == curthread);
 		
 		wchan_wakeall(cv->cv_wchan);
-		
-		(void)lock;
 }
 
 ////////////////////////////////////////////////////////////
