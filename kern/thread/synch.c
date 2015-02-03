@@ -317,7 +317,6 @@ cv_wait(struct cv *cv, struct lock *lock)
  * and broadcast() is that the former wakes up a
  * single thread, while the latter wakes up ALL
  * sleeping threads waiting to be signalled.
- 
  */
 void
 cv_signal(struct cv *cv, struct lock *lock)
