@@ -336,42 +336,139 @@ cv_broadcast(struct cv *cv, struct lock *lock)
 
 ////////////////////////////////////////////////////////////
 //
-// Reader Writer Locks
+// Reader Writer Lock
 
 struct rwlock * 
 rwlock_create(const char *name)
 {
-	struct rwlock *rwlock;
+		struct rwlock *rwlock;
+		
+		rwlock->rwlock_name = kstrdup(name);
+
+		rwlock->rwlock_read = false;
+		rwlock->rwlock_write = false;
+		
+		rwlock->rwlock_reader_count = 0;
+		rwlock->rwlock_rqueue = 0;
+		rwlock->rwlock_wqueue = 0;
+		
+		rwlock->rwlock_lock = lock_create(rwlock->rwlock_name);
+		
+		rwlock->rwlock_read_cv = cv_create(rwlock->rwlock_name);
+		rwlock->rwlock_write_cv = cv_create(rwlock->rwlock_name);
+		
+		rwlock->rwlock_cv = cv_create(rwlock->rwlock_name);
+
+		return rwlock;
+
 	(void)name;
 	return rwlock;
+
 }
 
 void 
 rwlock_destroy(struct rwlock *rwlock)
 {
-	(void)rwlock;
+		lock_destroy(rwlock->rwlock_lock);
+		
+		cv_destroy(rwlock->rwlock_read_cv);
+		cv_destroy(rwlock->rwlock_write_cv);
+		cv_destroy(rwlock->rwlock_cv);
+		
+		kfree(rwlock->rwlock_name);
 }
 
 void 
 rwlock_acquire_read(struct rwlock *rwlock)
 {
+
+	/* Both a reader and writer cannot hold the lock at the same time */
+	KASSERT( (!rwlock->rwlock_write && rwlock->rwlock_read) ||
+			 (rwlock->rwlock_write && !rwlock->rwlock_read) ||
+			 (!rwlock->rwlock_write && !rwlock->rwlock_read) );
+			 
+
+	lock_acquire(rwlock->rwlock_lock);
+		if(rwlock->rwlock_write || rwlock->rwlock_wqueue > 0) {
+			rwlock->rwlock_rqueue += 1;
+			
+			/* This while loop will exit when the thread wakes up
+			 * after calling cv_wait. Once signalled rwlock_write
+			 * will be false and rwlock_read true.
+			 */
+			while(rwlock->rwlock_write  || rwlock->rwlock_wqueue > 0) {
+				/* Wait for signal when the writer is done */
+				cv_wait(rwlock->rwlock_read_cv, rwlock->rwlock_lock);
+			}
+			
+			rwlock->rwlock_rqueue -= 1;
+		}
+		rwlock->rwlock_read = true;
+		rwlock->rwlock_reader_count += 1;
+		rwlock->rwlock_write = false;
+
 	(void)rwlock;
+
 }
 
 void 
 rwlock_release_read(struct rwlock *rwlock)
 {
+
+		rwlock->rwlock_reader_count -= 1;
+		
+		/* The idea here is that all readers need to finish before a writer is allowed to go. */
+		if(rwlock->rwlock_reader_count == 0 && rwlock->rwlock_wqueue > 0) {
+			cv_signal(rwlock->rwlock_write_cv, rwlock->rwlock_lock);
+			rwlock->rwlock_read = false;
+		}
+	
+	lock_release(rwlock->rwlock_lock);
+
 	(void)rwlock;
+
 }
 
 void 
 rwlock_acquire_write(struct rwlock *rwlock)
 {
+
+	/* Both a reader and writer cannot hold the lock at the same time */
+	KASSERT( (!rwlock->rwlock_write && rwlock->rwlock_read) ||
+			 (rwlock->rwlock_write && !rwlock->rwlock_read) ||
+			 (!rwlock->rwlock_write && !rwlock->rwlock_read) );
+	
+	lock_acquire(rwlock->rwlock_lock);
+		if(rwlock->rwlock_write || rwlock->rwlock_read) {
+			rwlock->rwlock_wqueue += 1;
+			while(rwlock->rwlock_read || rwlock->rwlock_write) {	// writer or reader already has lock
+				cv_wait(rwlock->rwlock_write_cv, rwlock->rwlock_lock);
+			}
+		}
+
+		rwlock->rwlock_wqueue -= 1;
+		rwlock->rwlock_write = true;
+		rwlock->rwlock_read = false;
+
 	(void)rwlock;
+
 }
 
 void 
 rwlock_release_write(struct rwlock *rwlock)
 {
+
+		rwlock->rwlock_write = false;
+		
+		/* We favor readers over writers */
+		if(rwlock->rwlock_rqueue > 0) {
+			cv_broadcast(rwlock->rwlock_read_cv, rwlock->rwlock_lock);
+		}
+		else if(rwlock->rwlock_wqueue > 0) {
+			cv_signal(rwlock->rwlock_write_cv, rwlock->rwlock_lock);
+		}
+	lock_release(rwlock->rwlock_lock);
+
 	(void)rwlock;
+
 }
