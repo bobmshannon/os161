@@ -26,43 +26,71 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
+ 
+#include <types.h>
+#include <lib.h>
+#include <array.h>
+#include <synch.h>
+#include <vnode.h>
+#include <vfs.h>
+#include <copyinout.h>
+#include <kern/fcntl.h>
+#include <current.h>
+#include <syscall.h>
+#include <types.h>
 
-#ifndef _SYSCALL_H_
-#define _SYSCALL_H_
+int 
+sys_open(const_userptr_t path, int flags, int mode) {
+	struct vnode *v;
+	int i;
+	size_t actual;
+	char *pathname = (char *)kmalloc(sizeof(char) * NAME_MAX);
+	int err;
+	
+	/* Copy in path name from user space */
+	err = copyinstr(path, pathname, NAME_MAX, &actual);
+	if(err != 0) {
+		return err;
+	}
+	
+	/* Open vnode and assign pointer to v */
+	vfs_open(pathname, flags, mode, &v);
+	
+	/* Find open slot in file descriptor table */
+	if(curthread->t_fd_table == NULL) {
+		init_fd_table();
+	}
+	
+	for(i = 0; i < OPEN_MAX; i++) {
+		if(curthread->t_fd_table[i] == NULL) {
+			break;
+		}
+	}
+	
+	/* Initialize file descriptor */
+	curthread->t_fd_table[i]->flags = flags;
+	curthread->t_fd_table[i]->offset = 0;
+	curthread->t_fd_table[i]->ref_count = 1;
+	curthread->t_fd_table[i]->lock = lock_create(pathname);
+	curthread->t_fd_table[i]->vn = v;
+	
+	/* Acquire lock */
+	//lock_acquire(curthread->t_fd_table[i]->lock);
+	
+	return i;
+}
 
-struct trapframe; /* from <machine/trapframe.h> */
-
-/*
- * The system call dispatcher.
- */
-
-void syscall(struct trapframe *tf);
-
-/*
- * Support functions.
- */
-
-/* Helper for fork(). You write this. */
-void enter_forked_process(struct trapframe *tf);
-
-/* Enter user mode. Does not return. */
-void enter_new_process(int argc, userptr_t argv, vaddr_t stackptr,
-vaddr_t entrypoint);
+int
+sys_close(int fd) {
+	if(curthread->t_fd_table[fd] != NULL) {
+		/* Close vnode and free memory */
+		vfs_close(curthread->t_fd_table[fd]->vn);
+		lock_destroy(curthread->t_fd_table[fd]->lock);
+		kfree(curthread->t_fd_table[fd]->vn);
+		kfree(curthread->t_fd_table[fd]);	
+		return 0;
+	}
+	return -1;
+}
 
 
-/*
- * Prototypes for IN-KERNEL entry points for system call implementations.
- */
-int sys_open(const_userptr_t path, int flags, int mode); 
-int sys_close(int fd);
-int sys_read(int fd, void *buf, size_t buflen);
-int sys_write(int fd, const void *buf, size_t nbytes);
-int sys_lseek(int fd, off_t pos, int whence);
-int sys_dup2(int oldfs, int newfd);
-int sys_chdir(const char *pathname);
-int sys_getcwd(char *buf, size_t buflen);
-
-int sys_reboot(int code);
-int sys___time(userptr_t user_seconds, userptr_t user_nanoseconds);
-
-#endif /* _SYSCALL_H_ */

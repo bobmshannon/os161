@@ -93,8 +93,11 @@ runprogram(char *progname)
 	if (result) {
 		/* thread_exit destroys curthread->t_addrspace */
 		return result;
-	}
-
+	} 
+	
+	/* Initialize file descriptor table. */
+	init_fd_table();
+	
 	/* Warp to user mode. */
 	enter_new_process(0 /*argc*/, NULL /*userspace addr of argv*/,
 			  stackptr, entrypoint);

@@ -38,6 +38,7 @@
 #include <cpu.h>
 #include <spl.h>
 #include <spinlock.h>
+#include <copyinout.h>
 #include <wchan.h>
 #include <thread.h>
 #include <threadlist.h>
@@ -47,6 +48,8 @@
 #include <addrspace.h>
 #include <mainbus.h>
 #include <vnode.h>
+#include <vfs.h>
+#include <kern/fcntl.h>
 
 #include "opt-synchprobs.h"
 #include "opt-defaultscheduler.h"
@@ -156,6 +159,46 @@ thread_create(const char *name)
 
 	return thread;
 }
+
+
+/* 
+ * Initialize file descriptor table.
+ */
+void 
+init_fd_table(void) {
+	struct vnode *stdin;
+	struct vnode *stdout;
+	struct vnode *stderr;
+	
+	char path[] = "con:";
+
+	vfs_open(path, O_RDONLY, 0644, &stdin);
+	vfs_open(path, O_WRONLY, 0644, &stdout);
+	vfs_open(path, O_WRONLY, 0644, &stderr);
+
+	/* stdin */
+	curthread->t_fd_table[0] = kmalloc(sizeof(struct fd*));
+	curthread->t_fd_table[0]->flags = 0;
+	curthread->t_fd_table[0]->offset = 0;
+	curthread->t_fd_table[0]->ref_count = 0;
+	curthread->t_fd_table[0]->vn = stdin;
+	
+	/* stdout */
+	curthread->t_fd_table[1] = kmalloc(sizeof(struct fd*));
+	curthread->t_fd_table[1]->flags = 0;
+	curthread->t_fd_table[1]->offset = 0;
+	curthread->t_fd_table[1]->ref_count = 0;
+	curthread->t_fd_table[1]->vn = stdout;
+	
+
+	curthread->t_fd_table[2] = kmalloc(sizeof(struct fd*));
+	curthread->t_fd_table[2]->flags = 0;
+	curthread->t_fd_table[2]->offset = 0;
+	curthread->t_fd_table[2]->ref_count = 0;
+	curthread->t_fd_table[2]->vn = stderr;
+
+	//copyout(&curthread->t_fd_table, (userptr_t)curthread->t_fd_table, sizeof(struct fd));
+} 
 
 /*
  * Create a CPU structure. This is used for the bootup CPU and
@@ -813,6 +856,11 @@ thread_exit(void)
 		as_activate(NULL);
 		as_destroy(as);
 	}
+	
+	/* File descriptor table */
+	if(cur->t_fd_table != NULL) {
+		//destroy_fd_table(cur->t_fd_table);
+	}
 
 	/* Check the stack guard band. */
 	thread_checkstack(cur);
@@ -821,6 +869,10 @@ thread_exit(void)
         splhigh();
 	thread_switch(S_ZOMBIE, NULL);
 	panic("The zombie walks!\n");
+}
+
+void destroy_fd_table(struct fd *fd_table[]) {
+	(void)fd_table;
 }
 
 /*
