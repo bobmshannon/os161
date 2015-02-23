@@ -69,13 +69,13 @@ sys_open(const_userptr_t path, int flags, int mode) {
 	
 	/* Find open slot in file descriptor table */
 	int fd;
-	for(i = 0; i <= OPEN_MAX; i++) {
+	for(i = 0; i < OPEN_MAX; i++) {
 		if(curthread->t_fd_table[i]->vn == NULL) {
 			fd = i;
 			break;
 		}
 		
-		if(i == OPEN_MAX && curthread->t_fd_table[i] != NULL) {
+		if(i == (OPEN_MAX - 1) && curthread->t_fd_table[i] != NULL) {
 			kprintf("kernel: could not open %s, open file limit reached\n", pathname);
 			return EMFILE;	// Process's file descriptor table is full
 		}
