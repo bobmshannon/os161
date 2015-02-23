@@ -113,6 +113,13 @@ syscall(struct trapframe *tf)
 		case SYS_open:
 			retval = sys_open((const_userptr_t)tf->tf_a0, tf->tf_a1, tf->tf_a2);
 			break;
+		case SYS_close:
+			retval = sys_close(tf->tf_a0);
+			break;
+		case SYS_write:
+			retval = sys_write(tf->tf_a0, (const_userptr_t)tf->tf_a1, tf->tf_a2);
+			break;
+			
 	    default:
 		kprintf("Unknown syscall %d\n", callno);
 		err = ENOSYS;
@@ -120,20 +127,20 @@ syscall(struct trapframe *tf)
 	}
 
 
-	if (err) {
+	//if (err) {
 		/*
 		 * Return the error code. This gets converted at
 		 * userlevel to a return value of -1 and the error
 		 * code in errno.
 		 */
-		tf->tf_v0 = err;
-		tf->tf_a3 = 1;      /* signal an error */
-	}
-	else {
+	//	tf->tf_v0 = err;
+	//	tf->tf_a3 = 1;      /* signal an error */
+	//}
+	//else {
 		/* Success. */
 		tf->tf_v0 = retval;
 		tf->tf_a3 = 0;      /* signal no error */
-	}
+	//}
 	
 	/*
 	 * Now, advance the program counter, to avoid restarting

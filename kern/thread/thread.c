@@ -169,7 +169,7 @@ init_fd_table(void) {
 
 	int i;
 	
-	char path[] = ".";
+	char path[] = "con:";
 
 	vfs_open(path, O_RDONLY, 0644, &stdin);
 

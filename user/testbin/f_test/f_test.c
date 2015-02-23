@@ -51,14 +51,15 @@
 int
 main(int argc, char * argv[])
 {
-	int ret;
-	ret = open(".", O_RDONLY, 0666);
+	int ret,fd0,fd1,fd2;
+	fd0 = open("testfile.txt", O_RDONLY | O_CREAT, 0666);
 	
-	if(ret >= 0) {
-		printf("successfully opened ., fd %d", ret);
-		return 0;
-	}
 	
+	ret = close(fd0);
+
+	
+	(void)fd1;
+	(void)fd2;
 	(void)argc;
 	(void)argv;
 	

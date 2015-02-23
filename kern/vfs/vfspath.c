@@ -144,7 +144,7 @@ vfs_remove(char *path)
 	char name[NAME_MAX+1];
 	int result;
 	
-	result = vfs_lookparent(path, &dir, name, sizeof(name));
+	result 	= vfs_lookparent(path, &dir, name, sizeof(name));
 	if (result) {
 		return result;
 	}

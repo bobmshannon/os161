@@ -48,33 +48,21 @@ sys_open(const_userptr_t path, int flags, int mode) {
 	size_t len;
 	int err, i;
 	
+	/* Check flags */
+		// vop_open should do this for us....
+	
 	/* Copy in path name from user space */
 	err = copyinstr(path, pathname, NAME_MAX, &len);
 	if(err) {
+		kprintf("kernel: error copying %s from user space \n", pathname);
 		return err;
-	}
-	
-	/* Check flags */
-	if(flags == (O_RDONLY | O_CREAT) || flags == (O_WRONLY | O_CREAT) || flags == (O_RDWR | O_CREAT) ) {
-		// Create file if it doesn't exist.
-	}
-	else if(flags == (O_RDONLY | O_EXCL) || flags == (O_WRONLY | O_EXCL) || flags == (O_RDWR | O_EXCL) ) {
-		// Fail if the file already exists.
-	}
-	else if(flags == (O_RDONLY | O_TRUNC) || flags == (O_WRONLY | O_TRUNC) || flags == (O_RDWR | O_TRUNC) ) {
-		// Truncate file to length 0 upon open.
-	}
-	else if(flags == (O_RDONLY | O_APPEND) || flags == (O_WRONLY | O_APPEND) || flags == (O_RDWR | O_APPEND) ) {
-		// Open the file in append mode.
-	}
-	else if(flags != O_RDONLY && flags != O_WRONLY && flags != O_RDWR) {
-		return -1;
 	}
 	
 	/* Open vnode and assign pointer to v */
 	err = vfs_open(pathname, flags, mode, &v);
 	if(err) {
-		return err;
+		kprintf("kernel: could not open %s, vop_open returned %d \n", pathname, err);
+		return -1;
 	}
 	
 	/* Find open slot in file descriptor table */
@@ -86,20 +74,21 @@ sys_open(const_userptr_t path, int flags, int mode) {
 		}
 		
 		if(i == OPEN_MAX && curthread->t_fd_table[i] != NULL) {
+			kprintf("kernel: could not open %s, open file limit reached\n", pathname);
 			return EMFILE;	// Process's file descriptor table is full
 		}
 	}
 	
 	/* Initialize file descriptor */
-	curthread->t_fd_table[i]->flags = flags;
-	curthread->t_fd_table[i]->offset = 0;
-	curthread->t_fd_table[i]->ref_count = 1;
-	curthread->t_fd_table[i]->lock = lock_create(pathname);
-	curthread->t_fd_table[i]->vn = v;
+	curthread->t_fd_table[fd]->flags = flags;
+	curthread->t_fd_table[fd]->offset = 0;
+	curthread->t_fd_table[fd]->ref_count = 1;
+	curthread->t_fd_table[fd]->lock = lock_create(pathname);
+	curthread->t_fd_table[fd]->vn = v;
 	
-	
-	kprintf("kernel: successfully opened ., fd %d", fd);
-	return 5;
+	kfree(v);
+	kprintf("kernel: successfully opened ., fd %d\n", fd);
+	return fd;
 }
 
 int
@@ -158,7 +147,7 @@ sys_write(int fd, const_userptr_t buf, size_t nbytes) {
 	char *kbuf = (char *)kmalloc(nbytes);
 	
 	/* Error checking */
-	if(fd < 0 || curthread->t_fd_table[fd] == NULL) {
+	if(fd < 0 || curthread->t_fd_table[fd]->vn == NULL) {
 		return EBADF;
 	}
 	
@@ -195,14 +184,17 @@ sys_write(int fd, const_userptr_t buf, size_t nbytes) {
 
 int
 sys_close(int fd) {
-	if(curthread->t_fd_table[fd] != NULL) {
+	if(curthread->t_fd_table[fd]->vn != NULL) {
 		/* Close vnode and free memory */
-		vfs_close(curthread->t_fd_table[fd]->vn);
+		kprintf("vn_opencount: %d | vn_refcount: %d \n", curthread->t_fd_table[fd]->vn->vn_opencount,curthread->t_fd_table[fd]->vn->vn_refcount);
+		//vfs_close(curthread->t_fd_table[fd]->vn);
 		lock_destroy(curthread->t_fd_table[fd]->lock);
 		kfree(curthread->t_fd_table[fd]->vn);
 		kfree(curthread->t_fd_table[fd]);	
+		kprintf("kernel: successfully closed fd %d", fd);
 		return 0;
 	}
+	kprintf("kernel: could not close fd %d, it was probably never open \n", fd);
 	return -1;
 }
 
