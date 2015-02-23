@@ -35,8 +35,6 @@
 #include <thread.h>
 #include <test.h>
 #include <synch.h>
-#include <current.h>
-#include <wchan.h>
 
 /*
  * 08 Feb 2012 : GWA : Driver code is in kern/synchprobs/driver.c. We will
@@ -208,13 +206,11 @@ matchmaker(void *p, unsigned long which)
  * functions in drivers.c.
  */
  
- struct lock *zero;
- struct lock *one;
- struct lock *two;
- struct lock *three;
- struct lock *stats;
- 
- struct semaphore *intersection;
+ struct lock *quadrant_zero;
+ struct lock *quadrant_one;
+ struct lock *quadrant_two;
+ struct lock *quadrant_three;
+ struct lock *intersection_stats;
  
  volatile bool car_in_zero;
  volatile bool car_in_one;
@@ -222,26 +218,23 @@ matchmaker(void *p, unsigned long which)
  volatile bool car_in_three;
  
  volatile int active_cars;
- volatile int right_cars;
- volatile int straight_cars;
- volatile int left_cars;
-
+ 
+ struct semaphore *intersection;
 // 13 Feb 2012 : GWA : Adding at the suggestion of Isaac Elbaz. These
 // functions will allow you to do local initialization. They are called at
 // the top of the corresponding driver code.
 
 void stoplight_init() {
-  zero = lock_create("quadrant 0");
-  one = lock_create("quadrant 1");
-  two = lock_create("quadrant 2");
-  three = lock_create("quadrant 3");
+  quadrant_zero = lock_create("quadrant 0");
+  quadrant_one = lock_create("quadrant 1");
+  quadrant_two = lock_create("quadrant 2");
+  quadrant_three = lock_create("quadrant 3");
   
-  intersection = sem_create("intersection sem", 3);
-
+  intersection_stats = lock_create("stats");
+  
   active_cars = 0;
-  left_cars = 0;
-  right_cars = 0;
-  straight_cars = 0;
+
+  intersection = sem_create("intersection sem", 3);
 
   return;
 }
@@ -272,60 +265,111 @@ gostraight(void *p, unsigned long direction)
    *	 3			    2								2
    */
    
-   P(intersection);
-	switch(direction) {
-		case 0:
-			lock_acquire(zero);
-			  kprintf("%s moving straight \n", curthread->t_name);
-			  inQuadrant(0);
-			lock_acquire(three);
-			  inQuadrant(3);
-			  lock_release(zero);
-			  leaveIntersection();
-			lock_release(three);
+   switch(direction) {
+	case 0:
+		P(intersection);
+		while(active_cars >= 3) {
+			// wait
+		}
+		lock_acquire(quadrant_zero);
+			active_cars += 1;
+			kprintf("number of cars now in intersection: %d \n", active_cars);
 			
-			break;
-		case 1:
-			lock_acquire(one);
-			  kprintf("%s moving straight \n", curthread->t_name);
-			  inQuadrant(1);
-			lock_acquire(zero);
-			  inQuadrant(0);
-			  lock_release(one);
-			  leaveIntersection();
-			lock_release(zero);
+			kprintf("car moving straight entering from direction %lu\n", direction);
+			inQuadrant(0);
 			
-			break;
-		case 2:
-			lock_acquire(two);
-			  kprintf("%s moving straight \n", curthread->t_name);
-			  inQuadrant(2);
-			lock_acquire(one);
-			  inQuadrant(1);
-			  lock_release(two);
-			  leaveIntersection();
-			lock_release(one);
+			lock_acquire(quadrant_three);
 			
-			break;
-		case 3:
-			lock_acquire(three);
-			  kprintf("%s moving straight \n", curthread->t_name);
-			  inQuadrant(3);
-			lock_acquire(two);
-			  inQuadrant(2);
-			  lock_release(three);
-			  leaveIntersection();
-			lock_release(two);
+				lock_release(quadrant_zero);
+				
+				inQuadrant(3);
+				
+				leaveIntersection();
+				
+			lock_release(quadrant_three);
 			
-			break;
-	}
-   V(intersection);
-	
+			active_cars -= 1;
+			kprintf("number of cars now in intersection: %d \n", active_cars);
+		V(intersection);
+		break;
+	case 1:
+		P(intersection);
+		while(active_cars >= 3) {
+			// wait
+		}
+		lock_acquire(quadrant_one);
+			active_cars += 1;
+			kprintf("number of cars now in intersection: %d \n", active_cars);
+		kprintf("car moving straight entering from direction %lu\n", direction);	
+			inQuadrant(1);
+			
+			lock_acquire(quadrant_zero);
+				
+				lock_release(quadrant_one);
+				
+				inQuadrant(0);
+				
+				leaveIntersection();
+			
+			lock_release(quadrant_zero);
+			
+			active_cars -= 1;
+			kprintf("number of cars now in intersection: %d \n", active_cars);
+
+		V(intersection);
+		break;
+	case 2:
+		P(intersection);
+		while(active_cars >= 3) {
+			// wait
+		}
+		lock_acquire(quadrant_two);
+			active_cars += 1;
+			kprintf("number of cars now in intersection: %d \n", active_cars);
+			
+		kprintf("car moving straight entering from direction %lu\n", direction);	
+			inQuadrant(2);
+			
+			lock_acquire(quadrant_one);
+				
+				lock_release(quadrant_two);
+				
+				inQuadrant(1);
+				
+			lock_release(quadrant_one);
+			
+			active_cars -= 1;
+			kprintf("number of cars now in intersection: %d \n", active_cars);
+		V(intersection);
+		break;
+	case 3:
+		P(intersection);
+		while(active_cars >= 3) {
+			// wait
+		}
+		lock_acquire(quadrant_three);
+		active_cars += 1;
+		kprintf("number of cars now in intersection: %d \n", active_cars);
+		kprintf("car moving straight entering from direction %lu\n", direction);	
+			inQuadrant(3);
+			
+			lock_acquire(quadrant_two);
+			
+				lock_release(quadrant_three);
+				
+				inQuadrant(2);
+				
+				leaveIntersection();
+			
+			lock_release(quadrant_two);
+		active_cars -= 1;
+		kprintf("number of cars now in intersection: %d \n", active_cars);
+		V(intersection);
+		break;
+   }
   V(stoplightMenuSemaphore);
   return;
 }
-
-
 
 void
 turnleft(void *p, unsigned long direction)
@@ -348,69 +392,126 @@ turnleft(void *p, unsigned long direction)
    *	 3			   2,1								1
    */
    
-   P(intersection);
-   
    switch(direction) {
 	case 0:
-		lock_acquire(zero);
-		   kprintf("%s turning left \n", curthread->t_name);
-		   inQuadrant(0);
-		lock_acquire(three);
-		   inQuadrant(3);
-		   lock_release(zero);
-		   lock_acquire(two);
-		      inQuadrant(2);
-			  lock_release(three);
-			  leaveIntersection();
-		   lock_release(two);
-		   
-		break;
-	case 1:
-		lock_acquire(one);
-		   kprintf("%s turning left \n", curthread->t_name);
-		   inQuadrant(1);
-		lock_acquire(zero);
-		   inQuadrant(0);
-		   lock_release(one);
-		   lock_acquire(three);
-		      inQuadrant(3);
-			  lock_release(zero);
-			  leaveIntersection();
-		   lock_release(three);
-		   
-		break;
-	case 2:
-		lock_acquire(two);
-		   kprintf("%s turning left \n", curthread->t_name);
-		   inQuadrant(2);
-		lock_acquire(one);
-		   inQuadrant(1);
-		   lock_release(two);
-		   lock_acquire(zero);
-		      inQuadrant(0);
-			  lock_release(one);
-			  leaveIntersection();
-		   lock_release(zero);
-		   
-		break;
+		P(intersection);
+		while(active_cars >= 3) {
+			// wait
+		}
 		
+		lock_acquire(quadrant_zero);
+		
+		active_cars += 1;
+		kprintf("number of cars now in intersection: %d \n", active_cars);
+		kprintf("car moving straight entering from direction %lu\n", direction);	
+			inQuadrant(0);
+			
+			lock_acquire(quadrant_three);
+			
+			inQuadrant(3);
+			
+			lock_release(quadrant_zero);
+			
+					lock_acquire(quadrant_two);
+					
+					inQuadrant(2);
+					
+					lock_release(quadrant_three);
+					
+						leaveIntersection();
+						
+					lock_release(quadrant_two);
+		active_cars -= 1;
+		kprintf("number of cars now in intersection: %d \n", active_cars);
+		V(intersection);
+	case 1:
+		P(intersection);
+		while(active_cars >= 3) {
+			// wait
+		}
+		lock_acquire(quadrant_one);
+		active_cars += 1;
+		kprintf("number of cars now in intersection: %d \n", active_cars);
+		kprintf("car moving straight entering from direction %lu\n", direction);	
+			inQuadrant(1);
+			
+			lock_acquire(quadrant_zero);
+			
+			inQuadrant(0);
+			
+			lock_release(quadrant_one);
+			
+					lock_acquire(quadrant_three);
+					
+					inQuadrant(3);
+					
+					lock_release(quadrant_zero);
+					
+						leaveIntersection();
+						
+					lock_release(quadrant_three);
+		active_cars -= 1;
+		kprintf("number of cars now in intersection: %d \n", active_cars);
+		V(intersection);
+	case 2:
+		P(intersection);
+		while(active_cars >= 3) {
+			// wait
+		}
+		lock_acquire(quadrant_two);
+		active_cars += 1;
+		kprintf("number of cars now in intersection: %d \n", active_cars);
+		kprintf("car moving straight entering from direction %lu\n", direction);	
+			inQuadrant(2);
+			
+			lock_acquire(quadrant_one);
+			
+			inQuadrant(1);
+			
+			lock_release(quadrant_two);
+			
+					lock_acquire(quadrant_zero);
+					
+					inQuadrant(0);
+					
+					lock_release(quadrant_one);
+					
+						leaveIntersection();
+						
+					lock_release(quadrant_zero);
+		active_cars -= 1;
+		kprintf("number of cars now in intersection: %d \n", active_cars);
+		V(intersection);
 	case 3:
-		lock_acquire(three);
-		   kprintf("%s turning left \n", curthread->t_name);
-		   inQuadrant(3);
-		lock_acquire(two);
-		   inQuadrant(2);
-		   lock_release(three);
-		   lock_acquire(one);
-		      inQuadrant(1);
-			  lock_release(two);
-			  leaveIntersection();
-		   lock_release(one);
-		   
-		break;
+		P(intersection);
+		while(active_cars >= 3) {
+			// wait
+		}
+		lock_acquire(quadrant_three);
+		active_cars += 1;
+		kprintf("number of cars now in intersection: %d \n", active_cars);
+		kprintf("car moving straight entering from direction %lu\n", direction);	
+			inQuadrant(3);
+			
+			lock_acquire(quadrant_two);
+			
+			inQuadrant(2);
+			
+			lock_release(quadrant_three);
+			
+					lock_acquire(quadrant_one);
+					
+					inQuadrant(1);
+					
+					lock_release(quadrant_two);
+					
+						leaveIntersection();
+						
+					lock_release(quadrant_one);		
+		active_cars -= 1;	
+		kprintf("number of cars now in intersection: %d \n", active_cars);
+		V(intersection);
    }
-   
-   V(intersection);
    
   V(stoplightMenuSemaphore);
   return;
@@ -436,45 +537,66 @@ turnright(void *p, unsigned long direction)
    *	 2			    2								2
    *	 3			    3								3
    */
-   //P(intersection);
-   
+
    switch(direction) {
 	case 0:
-		lock_acquire(zero);
-			kprintf("%s turning right \n", curthread->t_name);
+		P(intersection);
+		lock_acquire(quadrant_zero);
+		active_cars += 1;
+		kprintf("car moving straight entering from direction %lu\n", direction);
 			inQuadrant(0);
+			
 			leaveIntersection();
-		lock_release(zero);
-		
-		break;
+			
+		lock_release(quadrant_zero);
+		active_cars -= 1;
+		V(intersection);
 	case 1:
-		lock_acquire(one);
-			kprintf("%s turning right \n", curthread->t_name);
+		P(intersection);
+		
+		lock_acquire(quadrant_one);
+		active_cars += 1;
+		kprintf("number of cars now in intersection: %d \n", active_cars);
+		kprintf("car moving straight entering from direction %lu\n", direction);
 			inQuadrant(1);
+			
 			leaveIntersection();
-		lock_release(one);
+		active_cars -= 1;
+		kprintf("number of cars now in intersection: %d \n", active_cars);		
+		lock_release(quadrant_one);	
 		
-		break;
+		V(intersection);
 	case 2:
-		lock_acquire(two);
-			kprintf("%s turning right \n", curthread->t_name);
+		P(intersection);
+		
+		lock_acquire(quadrant_two);
+		active_cars += 1;
+		kprintf("number of cars now in intersection: %d \n", active_cars);
+		kprintf("car moving straight entering from direction %lu\n", direction);
 			inQuadrant(2);
+			
 			leaveIntersection();
-		lock_release(two);
-		
-		break;
+			
+		lock_release(quadrant_two);
+		active_cars -= 1;
+		kprintf("number of cars now in intersection: %d \n", active_cars);
+		V(intersection);
 	case 3:
-		lock_acquire(three);
-			kprintf("%s turning right \n", curthread->t_name);
-			inQuadrant(3);
-			leaveIntersection();
-		lock_release(three);
+		P(intersection);
 		
-		break;
-   }
-   
-   //V(intersection);
- 
+		lock_acquire(quadrant_three);
+		active_cars += 1;
+		kprintf("car moving straight entering from direction %lu\n", direction);
+		kprintf("number of cars now in intersection: %d \n", active_cars);
+			inQuadrant(3);
+			
+			leaveIntersection();
+			
+		lock_release(quadrant_three);
+		active_cars -= 1;
+		kprintf("number of cars now in intersection: %d \n", active_cars);
+		V(intersection);
+	}
   V(stoplightMenuSemaphore);
   return;
 }
