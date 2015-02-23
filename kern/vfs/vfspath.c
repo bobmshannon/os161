@@ -64,6 +64,10 @@ vfs_open(char *path, int openflags, mode_t mode, struct vnode **ret)
 	}
 
 	if (openflags & O_CREAT) {
+		if (openflags == (O_RDONLY | O_CREAT | O_EXCL) || openflags == (O_WRONLY | O_CREAT | O_EXCL) || openflags == (O_RDONLY | O_CREAT | O_EXCL) {
+			// O_EXCL was OR'ed in, fail if file already exists
+		}
+		
 		char name[NAME_MAX+1];
 		struct vnode *dir;
 		int excl = (openflags & O_EXCL)!=0;
