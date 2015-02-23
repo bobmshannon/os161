@@ -169,7 +169,6 @@ init_fd_table(void) {
 	struct vnode *stdin;
 	struct vnode *stdout;
 	struct vnode *stderr;
-	int i;
 	
 	char path[] = "con:";
 
@@ -198,9 +197,7 @@ init_fd_table(void) {
 	curthread->t_fd_table[2]->ref_count = 0;
 	curthread->t_fd_table[2]->vn = stderr;
 
-	for(i = 3; i < OPEN_MAX; i++) {
-		curthread->t_fd_table[i] = NULL;
-	}
+	//copyout(&curthread->t_fd_table, (userptr_t)curthread->t_fd_table, sizeof(struct fd));
 } 
 
 /*

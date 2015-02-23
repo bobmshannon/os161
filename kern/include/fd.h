@@ -31,7 +31,6 @@
 #define _FD_H_
 
 #include <limits.h>
-#include <types.h>
 
 /*
  * File handle.
@@ -41,7 +40,7 @@
 struct fd {
 	//char name[FILENAME_MAX];	/* Maximum file name length */
 	int flags;					/* Flags passed in by open() */
-	off_t offset;				/* Current seek position */
+	int offset;				/* Current seek position */
 	int ref_count;
 	struct lock* lock;			/* For mutual exclusion. */
 	struct vnode* vn;			/* Interfacing with vnode layer. */

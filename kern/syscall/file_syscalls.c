@@ -32,19 +32,16 @@
 #include <array.h>
 #include <synch.h>
 #include <vnode.h>
-#include <uio.h>
 #include <vfs.h>
 #include <copyinout.h>
 #include <kern/fcntl.h>
 #include <current.h>
 #include <syscall.h>
 #include <types.h>
-#include <kern/errno.h>
 
 int 
 sys_open(const_userptr_t path, int flags, int mode) {
 	struct vnode *v;
-	struct fd *fd_init;
 	int i;
 	size_t actual;
 	char *pathname = (char *)kmalloc(sizeof(char) * NAME_MAX);
@@ -52,32 +49,12 @@ sys_open(const_userptr_t path, int flags, int mode) {
 	
 	/* Copy in path name from user space */
 	err = copyinstr(path, pathname, NAME_MAX, &actual);
-	if(err) {
+	if(err != 0) {
 		return err;
-	}
-	
-	/* Check flags */
-	if(flags == (O_RDONLY | O_CREAT) || flags == (O_WRONLY | O_CREAT) || flags == (O_RDWR | O_CREAT) ) {
-		// Create file if it doesn't exist.
-	}
-	else if(flags == (O_RDONLY | O_EXCL) || flags == (O_WRONLY | O_EXCL) || flags == (O_RDWR | O_EXCL) ) {
-		// Fail if the file already exists.
-	}
-	else if(flags == (O_RDONLY | O_TRUNC) || flags == (O_WRONLY | O_TRUNC) || flags == (O_RDWR | O_TRUNC) ) {
-		// Truncate file to length 0 upon open.
-	}
-	else if(flags == (O_RDONLY | O_APPEND) || flags == (O_WRONLY | O_APPEND) || flags == (O_RDWR | O_APPEND) ) {
-		// Open the file in append mode.
-	}
-	else if(flags != O_RDONLY && flags != O_WRONLY && flags != O_RDWR) {
-		return -1;
 	}
 	
 	/* Open vnode and assign pointer to v */
-	err = vfs_open(pathname, flags, mode, &v);
-	if(err) {
-		return err;
-	}
+	vfs_open(pathname, flags, mode, &v);
 	
 	/* Find open slot in file descriptor table */
 	if(curthread->t_fd_table == NULL) {
@@ -88,115 +65,20 @@ sys_open(const_userptr_t path, int flags, int mode) {
 		if(curthread->t_fd_table[i] == NULL) {
 			break;
 		}
-		
-		if(i == OPEN_MAX && curthread->t_fd_table[i] != NULL) {
-			return EMFILE;	// Process's file descriptor table is full
-		}
 	}
 	
 	/* Initialize file descriptor */
-	curthread->t_fd_table[i] = fd_init;
 	curthread->t_fd_table[i]->flags = flags;
 	curthread->t_fd_table[i]->offset = 0;
 	curthread->t_fd_table[i]->ref_count = 1;
 	curthread->t_fd_table[i]->lock = lock_create(pathname);
 	curthread->t_fd_table[i]->vn = v;
-
-	kfree(pathname);
+	
+	/* Acquire lock */
+	//lock_acquire(curthread->t_fd_table[i]->lock);
 	
 	return i;
 }
-
-int
-sys_read(int fd, userptr_t buf, size_t buflen) {
-	/* Initialize some stuff */
-	struct uio read;
-	struct iovec iov;
-	int err;
-	char *kbuf = (char *)kmalloc(buflen);
-	
-	/* Error checking */
-	if(fd < 0 || curthread->t_fd_table[fd] == NULL) {
-		return EBADF;
-	}
-	
-	else if(buf == NULL) {
-		return EFAULT;
-	}
-	
-	else if(curthread->t_fd_table[fd]->flags != O_RDWR || curthread->t_fd_table[fd]->flags != O_RDONLY) {
-		return EINVAL;
-	}
-	
-	/* Acquire lock and do the read */
-	lock_acquire(curthread->t_fd_table[fd]->lock);
-	
-		uio_kinit(&iov, &read, (void *)kbuf, buflen, curthread->t_fd_table[fd]->offset, UIO_READ);
-		
-		read.uio_segflg = UIO_USERSPACE;
-		
-		err = VOP_READ(curthread->t_fd_table[fd]->vn, &read);
-		if(err) {
-			lock_release(curthread->t_fd_table[fd]->lock);
-			return -1;
-		}
-		
-		curthread->t_fd_table[fd]->offset = read.uio_offset;
-		
-		copyout((const void *)kbuf, (userptr_t)buf, buflen);
-	
-	lock_release(curthread->t_fd_table[fd]->lock);
-	
-	/* Update offset */
-	curthread->t_fd_table[fd]->offset += (buflen -  read.uio_resid);
-	
-	/* Return number of bytes read */
-	return buflen - read.uio_resid;
-}
-
-int
-sys_write(int fd, const_userptr_t buf, size_t nbytes) {
-	/* Initialize some stuff */
-	struct uio write;
-	struct iovec iov;
-	int err;
-	char *kbuf = (char *)kmalloc(nbytes);
-	
-	/* Error checking */
-	if(fd < 0 || curthread->t_fd_table[fd] == NULL) {
-		return EBADF;
-	}
-	
-	else if(buf == NULL) {
-		return EFAULT;
-	}
-	
-	else if(curthread->t_fd_table[fd]->flags != O_RDWR || curthread->t_fd_table[fd]->flags != O_RDONLY) {
-		return EINVAL;
-	}
-	
-	/* Acquire lock and do the write */
-	lock_acquire(curthread->t_fd_table[fd]->lock);
-	
-		uio_kinit(&iov, &write, kbuf, nbytes, curthread->t_fd_table[fd]->offset, UIO_WRITE);
-		
-		write.uio_segflg = UIO_USERSPACE;
-		
-		err = VOP_WRITE(curthread->t_fd_table[fd]->vn, &write);
-		if(err) {
-			lock_release(curthread->t_fd_table[fd]->lock);
-			return -1;
-		}
-		
-		curthread->t_fd_table[fd]->offset = write.uio_offset;
-		
-		copyout((const void *)kbuf, (userptr_t)buf, nbytes);
-	
-	lock_release(curthread->t_fd_table[fd]->lock);
-	
-	return 1;
-}
-
 
 int
 sys_close(int fd) {

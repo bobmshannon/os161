@@ -114,37 +114,23 @@ syscall(struct trapframe *tf)
 		/* Open file */
 		case SYS_open:
 			tf->tf_v0 = sys_open((const_userptr_t)tf->tf_a0, tf->tf_a1, tf->tf_a2);
-			//kprintf("Opening file %s\n", (char *)tf->tf_a0);
+			kprintf("Opening file %s\n", (char *)tf->tf_a0);
 			break;
 		
 		/* Close file */
 		case SYS_close:
 			tf->tf_v0 = sys_close(tf->tf_a0);
-			//kprintf("Closing file %s\n", (char *)tf->tf_a0);
+			kprintf("Closing file %s\n", (char *)tf->tf_a0);
 			break;
 			
 		/* Read file */
 		case SYS_read:
-			tf->tf_v0 = sys_read(tf->tf_a0, (userptr_t)tf->tf_a1, tf->tf_a2);
-			//kprintf("Reading file %s\n", (char *)tf->tf_a0);
+			kprintf("Reading file %s\n", (char *)tf->tf_a0);
 			break;
 		
 		/* Write to file */
 		case SYS_write:
-			tf->tf_v0 = sys_write(tf->tf_a0, (const_userptr_t)tf->tf_a1, tf->tf_a2);
-			//kprintf("Writing file %s\n", (char *)tf->tf_a0);
-			break;
-		
-		case SYS_lseek:
-			break;
-			
-		case SYS_dup2:
-			break;
-		
-		case SYS_chdir:
-			break;
-			
-		case SYS__exit:
+			kprintf("Writing file %s\n", (char *)tf->tf_a0);
 			break;
 			
 	    default:
