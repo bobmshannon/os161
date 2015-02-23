@@ -27,42 +27,24 @@
  * SUCH DAMAGE.
  */
 
+#ifndef _FD_H_
+#define _FD_H_
+
+#include <limits.h>
+#include <types.h>
+
 /*
- * Razvan Surdulescu
- * abhi shelat
- * April 28 1997
- * 
- * Test suite for Nachos HW4--The Filesystem
+ * File handle.
  *
- * Modified by dholland 1/31/2001 for OS/161
- *
- * This should run successfully (on SFS) when the file system
- * assignment is complete.
+ * Basic structure representing a open file. 
  */
+struct fd {
+	//char name[FILENAME_MAX];	/* Maximum file name length */
+	int flags;					/* Flags passed in by open() */
+	off_t offset;				/* Current seek position */
+	int ref_count;
+	struct lock* lock;			/* For mutual exclusion. */
+	struct vnode* vn;			/* Interfacing with vnode layer. */
+};
 
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <stdio.h>
-#include <string.h>
-#include <unistd.h>
-#include <err.h>
-#include "f_hdr.h"
-
-int
-main(int argc, char * argv[])
-{
-	int ret;
-	ret = open(".", O_RDONLY, 0666);
-	
-	if(ret >= 0) {
-		printf("successfully opened ., fd %d", ret);
-		return 0;
-	}
-	
-	(void)argc;
-	(void)argv;
-	
-	return 0;
-}
-
-
+#endif /* _FD_H_ */

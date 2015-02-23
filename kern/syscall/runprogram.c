@@ -73,6 +73,9 @@ runprogram(char *progname)
 		vfs_close(v);
 		return ENOMEM;
 	}
+	
+	/* File descriptor table. */
+	init_fd_table();
 
 	/* Activate it. */
 	as_activate(curthread->t_addrspace);

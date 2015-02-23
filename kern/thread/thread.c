@@ -46,6 +46,8 @@
 #include <synch.h>
 #include <addrspace.h>
 #include <mainbus.h>
+#include <vfs.h>
+#include <kern/fcntl.h>
 #include <vnode.h>
 
 #include "opt-synchprobs.h"
@@ -156,6 +158,50 @@ thread_create(const char *name)
 
 	return thread;
 }
+
+
+/* 
+ * Initialize file descriptor table.
+ */
+void 
+init_fd_table(void) {
+	struct vnode *stdin;
+
+	int i;
+	
+	char path[] = ".";
+
+	vfs_open(path, O_RDONLY, 0644, &stdin);
+
+	/* stdin */
+	curthread->t_fd_table[0] = kmalloc(sizeof(struct fd*));
+	curthread->t_fd_table[0]->flags = 0;
+	curthread->t_fd_table[0]->offset = 0;
+	curthread->t_fd_table[0]->ref_count = 0;
+	curthread->t_fd_table[0]->vn = stdin;
+	
+	/* stdout */
+	curthread->t_fd_table[1] = kmalloc(sizeof(struct fd*));
+	curthread->t_fd_table[1]->flags = 0;
+	curthread->t_fd_table[1]->offset = 0;
+	curthread->t_fd_table[1]->ref_count = 0;
+	curthread->t_fd_table[1]->vn = stdin;
+	
+
+	curthread->t_fd_table[2] = kmalloc(sizeof(struct fd*));
+	curthread->t_fd_table[2]->flags = 0;
+	curthread->t_fd_table[2]->offset = 0;
+	curthread->t_fd_table[2]->ref_count = 0;
+	curthread->t_fd_table[2]->vn = stdin;
+
+	for(i = 3; i < OPEN_MAX; i++) {
+		curthread->t_fd_table[i] = kmalloc(sizeof(struct fd*));
+		curthread->t_fd_table[i]->flags = 0;
+		curthread->t_fd_table[i]->offset = 0;
+		curthread->t_fd_table[i]->ref_count = 0;
+		curthread->t_fd_table[i]->vn = NULL;		
+	}
+} 
 
 /*
  * Create a CPU structure. This is used for the bootup CPU and
