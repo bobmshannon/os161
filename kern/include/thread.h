@@ -38,7 +38,6 @@
 
 #include <spinlock.h>
 #include <threadlist.h>
-#include <fd.h>
 
 struct addrspace;
 struct cpu;
@@ -84,8 +83,7 @@ struct thread {
 	void *t_stack;			/* Kernel-level stack */
 	struct switchframe *t_context;	/* Saved register context (on stack) */
 	struct cpu *t_cpu;		/* CPU thread runs on */
-	struct fd* t_fd_table[OPEN_MAX];	/* File descriptor table. */
-	
+
 	/*
 	 * Interrupt state fields.
 	 *
@@ -115,12 +113,6 @@ struct thread {
 
 	/* add more here as needed */
 };
-
-/* Initialize file descriptor table */
-void init_fd_table(void);
-
-/* Destroy file descriptor table */
-void destroy_fd_table(struct fd *fd_table[]);
 
 /* Call once during system startup to allocate data structures. */
 void thread_bootstrap(void);

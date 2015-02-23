@@ -100,43 +100,21 @@ syscall(struct trapframe *tf)
 	retval = 0;
 
 	switch (callno) {
-		/* Reboot */
 	    case SYS_reboot:
-			err = sys_reboot(tf->tf_a0);
-			break;
-		
-		/* System time */
+		err = sys_reboot(tf->tf_a0);
+		break;
+
 	    case SYS___time:
-			err = sys___time((userptr_t)tf->tf_a0,
-					 (userptr_t)tf->tf_a1);
-			break;
-		
-		/* Open file */
-		case SYS_open:
-			tf->tf_v0 = sys_open((const_userptr_t)tf->tf_a0, tf->tf_a1, tf->tf_a2);
-			kprintf("Opening file %s\n", (char *)tf->tf_a0);
-			break;
-		
-		/* Close file */
-		case SYS_close:
-			tf->tf_v0 = sys_close(tf->tf_a0);
-			kprintf("Closing file %s\n", (char *)tf->tf_a0);
-			break;
-			
-		/* Read file */
-		case SYS_read:
-			kprintf("Reading file %s\n", (char *)tf->tf_a0);
-			break;
-		
-		/* Write to file */
-		case SYS_write:
-			kprintf("Writing file %s\n", (char *)tf->tf_a0);
-			break;
-			
+		err = sys___time((userptr_t)tf->tf_a0,
+				 (userptr_t)tf->tf_a1);
+		break;
+
+	    /* Add stuff here */
+ 
 	    default:
-			kprintf("Unknown syscall %d\n", callno);
-			err = ENOSYS;
-			break;
+		kprintf("Unknown syscall %d\n", callno);
+		err = ENOSYS;
+		break;
 	}
 
 
