@@ -80,14 +80,14 @@ sys_open(const_userptr_t path, int flags, int mode) {
 	}
 	
 	/* Initialize file descriptor */
-	curthread->t_fd_table[fd]->flags = flags;
+	curthread->t_fd_table[fd]->flags = flags; 
 	curthread->t_fd_table[fd]->offset = 0;
 	curthread->t_fd_table[fd]->ref_count = 1;
 	curthread->t_fd_table[fd]->lock = lock_create(pathname);
 	curthread->t_fd_table[fd]->vn = v;
 	
-	kfree(v);
-	kprintf("kernel: successfully opened ., fd %d\n", fd);
+	//kfree(v);
+	kprintf("kernel: successfully opened %s, fd %d\n", pathname, fd);
 	return fd;
 }
 

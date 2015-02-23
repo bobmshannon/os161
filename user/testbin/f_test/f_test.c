@@ -52,7 +52,10 @@ int
 main(int argc, char * argv[])
 {
 	int ret,fd0,fd1,fd2;
-	fd0 = open("testfile.txt", O_RDONLY | O_CREAT, 0666);
+	char path[NAMEMAX];
+	strcpy(path, "fstest.tmp");
+	
+	fd0 = open(path, O_RDONLY | O_CREAT, 0666);
 	
 	
 	ret = close(fd0);
