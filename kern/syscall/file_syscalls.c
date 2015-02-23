@@ -40,13 +40,15 @@
 #include <syscall.h>
 #include <types.h>
 #include <kern/errno.h>
+#include <stat.h>
 
 int 
 sys_open(const_userptr_t path, int flags, int mode) {
 	struct vnode *v;
+	struct stat *s;
 	char pathname[NAME_MAX];
 	size_t len;
-	int err, i;
+	int err, i, filesize;
 	
 	/* Check flags */
 		// vop_open should do this for us....
@@ -81,7 +83,14 @@ sys_open(const_userptr_t path, int flags, int mode) {
 	
 	/* Initialize file descriptor */
 	curthread->t_fd_table[fd]->flags = flags; 
-	curthread->t_fd_table[fd]->offset = 0;
+	if(flags >= 32) {	// O_APPEND was passed in as a flag, set offset to end of file
+		filesize = VOP_STAT(v, s);
+		curthread->t_fd_table[fd]->offset = filesize;
+		kfree(s);
+	}
+	else {
+		curthread->t_fd_table[fd]->offset = 0;
+	}
 	curthread->t_fd_table[fd]->ref_count = 1;
 	curthread->t_fd_table[fd]->lock = lock_create(pathname);
 	curthread->t_fd_table[fd]->vn = v;
