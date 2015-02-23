@@ -69,7 +69,7 @@ sys_open(const_userptr_t path, int flags, int mode) {
 	
 	/* Find open slot in file descriptor table */
 	int fd;
-	for(i = 0; i < OPEN_MAX; i++) {
+	for(i = 0; i <= OPEN_MAX; i++) {
 		if(curthread->t_fd_table[i]->vn == NULL) {
 			fd = i;
 			break;
