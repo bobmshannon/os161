@@ -51,7 +51,7 @@ sys_open(const_userptr_t path, int flags, int mode) {
 	int err, i, filesize;
 	
 	/* Check flags */
-		// vop_open should do this for us....
+		// vop_open should do most of this for us...
 	
 	/* Copy in path name from user space */
 	err = copyinstr(path, pathname, NAME_MAX, &len);
@@ -86,6 +86,7 @@ sys_open(const_userptr_t path, int flags, int mode) {
 	if(flags >= 32) {	// O_APPEND was passed in as a flag, set offset to end of file
 		filesize = VOP_STAT(v, s);
 		curthread->t_fd_table[fd]->offset = filesize;
+		kprintf("kernel: O_APPEND flag detected, using offset %d \n", filesize);
 		kfree(s);
 	}
 	else {

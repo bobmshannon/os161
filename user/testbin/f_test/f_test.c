@@ -43,6 +43,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <stdio.h>
+#include <kern/limits.h>
 #include <string.h>
 #include <unistd.h>
 #include <err.h>
@@ -52,13 +53,23 @@ int
 main(int argc, char * argv[])
 {
 	int ret,fd0,fd1,fd2;
-	char path[NAMEMAX];
-	strcpy(path, "fstest.tmp");
+
+	char path[] = "test.txt";
 	
-	fd0 = open(path, O_RDONLY | O_CREAT, 0666);
+	fd0 = open(path, O_RDONLY | O_EXCL, 0666);
+	if(fd0 < 0) {
+		printf("open() on %s failed \n", path);
+		return -1;
+	}
+	else {
+		ret = close(fd0);
+		
+		if(ret < 0) {
+			printf("close() on %s failed \n", path);
+		}
+	}
 	
 	
-	ret = close(fd0);
 
 	
 	(void)fd1;
