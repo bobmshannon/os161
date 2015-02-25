@@ -45,6 +45,8 @@ struct fd {
 	int ref_count;
 	struct lock* lock;			/* For mutual exclusion. */
 	struct vnode* vn;			/* Interfacing with vnode layer. */
+	bool writable;
+	bool readable;
 };
 
 #endif /* _FD_H_ */

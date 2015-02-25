@@ -125,6 +125,7 @@ sys_read(int fd, userptr_t buf, size_t buflen) {
 	case O_RDONLY:
 		readable = 1;
 		break;
+	case O_RDONLY | 
 	case O_WRONLY:
 		readable = 0;
 		break;
