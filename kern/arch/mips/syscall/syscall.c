@@ -130,7 +130,7 @@ syscall(struct trapframe *tf)
 	}
 
 
-	if (err | retval == EBADF | retval == EFAULT) {
+	if (err || retval == EBADF || retval == EFAULT) {
 		/*
 		 * Return the error code. This gets converted at
 		 * userlevel to a return value of -1 and the error
