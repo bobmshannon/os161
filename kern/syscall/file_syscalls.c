@@ -106,8 +106,11 @@ sys_read(int fd, userptr_t buf, size_t buflen) {
 	struct uio read;
 	struct iovec iov;
 	int err;
-	char *kbuf = (char *)kmalloc(buflen);
-	//kprintf("read complete: %s\n", kbuf);
+	char *kbuf[buflen];
+	
+	/* Copy in data from user space pointer to kernel buffer */
+	copyin(buf, (void *)kbuf, buflen);
+	
 	/* Error checking */
 	if(fd < 0 || curthread->t_fd_table[fd]->vn == NULL) {
 		return EBADF;
@@ -117,35 +120,25 @@ sys_read(int fd, userptr_t buf, size_t buflen) {
 		return EFAULT;
 	}
 	
-	else if(curthread->t_fd_table[fd]->flags != O_RDWR || curthread->t_fd_table[fd]->flags != O_RDONLY) {
-		return EINVAL;
-	}
+	//else if(curthread->t_fd_table[fd]->flags != O_RDWR || curthread->t_fd_table[fd]->flags != O_RDONLY) {
+	//	return EINVAL;
+	//}
 	
-	/* Acquire lock and do the read */
-	//lock_acquire(curthread->t_fd_table[fd]->lock);
-	
-		uio_kinit(&iov, &read, (void *)kbuf, buflen, curthread->t_fd_table[fd]->offset, UIO_READ);
-		
-		read.uio_segflg = UIO_USERSPACE;
-		
+	/* Do the read */
+	lock_acquire(curthread->t_fd_table[fd]->lock);
+		uio_kinit(&iov, &read, kbuf, buflen, curthread->t_fd_table[fd]->offset, UIO_READ);
 		err = VOP_READ(curthread->t_fd_table[fd]->vn, &read);
 		if(err) {
-			lock_release(curthread->t_fd_table[fd]->lock);
+			kprintf("Read error \n");
 			return -1;
 		}
 		
-		curthread->t_fd_table[fd]->offset = read.uio_offset;
-		
-		copyout((const void *)kbuf, (userptr_t)buf, buflen);
-		
-		//kprintf("read complete: %s\n", kbuf);
-		
-	//lock_release(curthread->t_fd_table[fd]->lock);
+		curthread->t_fd_table[fd]->offset += (buflen - read.uio_resid);
+	lock_release(curthread->t_fd_table[fd]->lock);
 	
-	/* Update offset */
-	curthread->t_fd_table[fd]->offset += (buflen -  read.uio_resid);
+	/* Send data back to user's buffer */
+	copyout((const void *)kbuf, buf, buflen);
 	
-	/* Return number of bytes read */
 	return buflen - read.uio_resid;
 }
 
@@ -183,7 +176,8 @@ sys_write(int fd, const_userptr_t buf, size_t nbytes) {
 		}
 	lock_release(curthread->t_fd_table[fd]->lock);
 	
-	return 1;
+	curthread->t_fd_table[fd]->offset += (nbytes - write.uio_resid);
+	return nbytes - write.uio_resid;
 }
 
 
