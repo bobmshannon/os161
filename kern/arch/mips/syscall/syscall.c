@@ -130,20 +130,20 @@ syscall(struct trapframe *tf)
 	}
 
 
-	//if (err) {
+	if (err | retval == EBADF | retval == EFAULT) {
 		/*
 		 * Return the error code. This gets converted at
 		 * userlevel to a return value of -1 and the error
 		 * code in errno.
 		 */
-	//	tf->tf_v0 = err;
-	//	tf->tf_a3 = 1;      /* signal an error */
-	//}
-	//else {
+		tf->tf_v0 = err;
+		tf->tf_a3 = 1;      /* signal an error */
+	}
+	else {
 		/* Success. */
 		tf->tf_v0 = retval;
 		tf->tf_a3 = 0;      /* signal no error */
-	//}
+	}
 	
 	/*
 	 * Now, advance the program counter, to avoid restarting
