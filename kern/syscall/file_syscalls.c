@@ -105,24 +105,43 @@ sys_read(int fd, userptr_t buf, size_t buflen) {
 	/* Initialize some stuff */
 	struct uio read;
 	struct iovec iov;
-	int err;
+	int err, flagmode, readable;
 	char *kbuf[buflen];
 	
 	/* Copy in data from user space pointer to kernel buffer */
 	copyin(buf, (void *)kbuf, buflen);
 	
 	/* Error checking */
-	if(fd < 0 || curthread->t_fd_table[fd]->vn == NULL) {
+	if((fd < 0) || (curthread->t_fd_table[fd]->vn == NULL) || (fd >= OPEN_MAX)) {
 		return EBADF;
 	}
 	
 	else if(buf == NULL) {
 		return EFAULT;
 	}
+
+	flagmode = curthread->t_fd_table[fd]->flags & O_ACCMODE;
+	switch(flagmode) {
+	case O_RDONLY:
+		readable = 1;
+		break;
+	case O_WRONLY:
+		readable = 0;
+		break;
+	case O_RDWR:
+		readable = 1;
+		break;
+	default:
+		readable = 0;
+		//not working.
+		break;
+	}
 	
-	//else if(curthread->t_fd_table[fd]->flags != O_RDWR || curthread->t_fd_table[fd]->flags != O_RDONLY) {
-	//	return EINVAL;
-	//}
+	
+	if(readable != 1) {
+		return EBADF;
+	}
+	
 	
 	/* Do the read */
 	lock_acquire(curthread->t_fd_table[fd]->lock);
@@ -147,14 +166,14 @@ sys_write(int fd, const_userptr_t buf, size_t nbytes) {
 	/* Initialize some stuff */
 	struct uio write;
 	struct iovec iov;
-	int err;
+	int err, flagmode, writable;
 	char *kbuf[nbytes];
 	
 	/* Copy in data from user space pointer to kernel buffer */
 	copyin(buf, (void *)kbuf, nbytes);
 	
 	/* Error checking */
-	if(fd < 0 || curthread->t_fd_table[fd]->vn == NULL) {
+	if((fd < 0) || (curthread->t_fd_table[fd]->vn == NULL) || (fd >= OPEN_MAX)) {
 		return EBADF;
 	}
 	
@@ -162,9 +181,27 @@ sys_write(int fd, const_userptr_t buf, size_t nbytes) {
 		return EFAULT;
 	}
 	
-	//else if(curthread->t_fd_table[fd]->flags != O_RDWR || curthread->t_fd_table[fd]->flags != O_RDONLY) {
-	//	return EINVAL;
-	//}
+	flagmode = curthread->t_fd_table[fd]->flags & O_ACCMODE;
+	switch(flagmode) {
+	case O_RDONLY:
+		writable = 0;
+		break;
+	case O_WRONLY:
+		writable = 1;
+		break;
+	case O_RDWR:
+		writable = 1;
+		break;
+	default:
+		writable = 0;
+		//not working.
+		break;
+	}
+	
+	
+	if(writable != 1) {
+		return EBADF;
+	}
 	
 	/* Do the write */
 	lock_acquire(curthread->t_fd_table[fd]->lock);
