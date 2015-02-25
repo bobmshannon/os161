@@ -56,14 +56,14 @@ sys_open(const_userptr_t path, int flags, int mode) {
 	/* Copy in path name from user space */
 	err = copyinstr(path, pathname, NAME_MAX, &len);
 	if(err) {
-		kprintf("kernel: error copying %s from user space \n", pathname);
+		//kprintf("kernel: error copying %s from user space \n", pathname);
 		return err;
 	}
 	
 	/* Open vnode and assign pointer to v */
 	err = vfs_open(pathname, flags, mode, &v);
 	if(err) {
-		kprintf("kernel: could not open %s, vop_open returned %d \n", pathname, err);
+		//kprintf("kernel: could not open %s, vop_open returned %d \n", pathname, err);
 		return -1;
 	}
 	
@@ -76,7 +76,7 @@ sys_open(const_userptr_t path, int flags, int mode) {
 		}
 		
 		if(i == (OPEN_MAX - 1) && curthread->t_fd_table[i] != NULL) {
-			kprintf("kernel: could not open %s, open file limit reached\n", pathname);
+			//kprintf("kernel: could not open %s, open file limit reached\n", pathname);
 			return EMFILE;	// Process's file descriptor table is full
 		}
 	}
@@ -86,7 +86,7 @@ sys_open(const_userptr_t path, int flags, int mode) {
 	if(flags >= 32) {	// O_APPEND was passed in as a flag, set offset to end of file
 		filesize = VOP_STAT(v, s);
 		curthread->t_fd_table[fd]->offset = filesize;
-		kprintf("kernel: O_APPEND flag detected, using offset %d \n", filesize);
+		//kprintf("kernel: O_APPEND flag detected, using offset %d \n", filesize);
 		kfree(s);
 	}
 	else {
@@ -96,7 +96,7 @@ sys_open(const_userptr_t path, int flags, int mode) {
 	curthread->t_fd_table[fd]->lock = lock_create(pathname);
 	curthread->t_fd_table[fd]->vn = v;
 
-	kprintf("kernel: successfully opened %s, fd %d \n", pathname, fd);
+	//kprintf("kernel: successfully opened %s, fd %d \n", pathname, fd);
 	return fd;
 }
 
@@ -107,9 +107,9 @@ sys_read(int fd, userptr_t buf, size_t buflen) {
 	struct iovec iov;
 	int err;
 	char *kbuf = (char *)kmalloc(buflen);
-	
+	//kprintf("read complete: %s\n", kbuf);
 	/* Error checking */
-	if(fd < 0 || curthread->t_fd_table[fd] == NULL) {
+	if(fd < 0 || curthread->t_fd_table[fd]->vn == NULL) {
 		return EBADF;
 	}
 	
@@ -122,7 +122,7 @@ sys_read(int fd, userptr_t buf, size_t buflen) {
 	}
 	
 	/* Acquire lock and do the read */
-	lock_acquire(curthread->t_fd_table[fd]->lock);
+	//lock_acquire(curthread->t_fd_table[fd]->lock);
 	
 		uio_kinit(&iov, &read, (void *)kbuf, buflen, curthread->t_fd_table[fd]->offset, UIO_READ);
 		
@@ -137,8 +137,10 @@ sys_read(int fd, userptr_t buf, size_t buflen) {
 		curthread->t_fd_table[fd]->offset = read.uio_offset;
 		
 		copyout((const void *)kbuf, (userptr_t)buf, buflen);
-	
-	lock_release(curthread->t_fd_table[fd]->lock);
+		
+		//kprintf("read complete: %s\n", kbuf);
+		
+	//lock_release(curthread->t_fd_table[fd]->lock);
 	
 	/* Update offset */
 	curthread->t_fd_table[fd]->offset += (buflen -  read.uio_resid);
@@ -153,7 +155,10 @@ sys_write(int fd, const_userptr_t buf, size_t nbytes) {
 	struct uio write;
 	struct iovec iov;
 	int err;
-	char *kbuf = (char *)kmalloc(nbytes);
+	char *kbuf[nbytes];
+	
+	/* Copy in data from user space pointer to kernel buffer */
+	copyin(buf, (void *)kbuf, nbytes);
 	
 	/* Error checking */
 	if(fd < 0 || curthread->t_fd_table[fd]->vn == NULL) {
@@ -164,27 +169,18 @@ sys_write(int fd, const_userptr_t buf, size_t nbytes) {
 		return EFAULT;
 	}
 	
-	else if(curthread->t_fd_table[fd]->flags != O_RDWR || curthread->t_fd_table[fd]->flags != O_RDONLY) {
-		return EINVAL;
-	}
+	//else if(curthread->t_fd_table[fd]->flags != O_RDWR || curthread->t_fd_table[fd]->flags != O_RDONLY) {
+	//	return EINVAL;
+	//}
 	
-	/* Acquire lock and do the write */
+	/* Do the write */
 	lock_acquire(curthread->t_fd_table[fd]->lock);
-	
 		uio_kinit(&iov, &write, kbuf, nbytes, curthread->t_fd_table[fd]->offset, UIO_WRITE);
-		
-		write.uio_segflg = UIO_USERSPACE;
-		
 		err = VOP_WRITE(curthread->t_fd_table[fd]->vn, &write);
 		if(err) {
-			lock_release(curthread->t_fd_table[fd]->lock);
+			kprintf("Write error \n");
 			return -1;
 		}
-		
-		curthread->t_fd_table[fd]->offset = write.uio_offset;
-		
-		copyout((const void *)kbuf, (userptr_t)buf, nbytes);
-	
 	lock_release(curthread->t_fd_table[fd]->lock);
 	
 	return 1;
@@ -195,15 +191,15 @@ int
 sys_close(int fd) {
 	if(curthread->t_fd_table[fd]->vn != NULL) {
 		/* Close vnode and free memory */
-		kprintf("vn_opencount: %d | vn_refcount: %d \n", curthread->t_fd_table[fd]->vn->vn_opencount,curthread->t_fd_table[fd]->vn->vn_refcount);
+		//kprintf("vn_opencount: %d | vn_refcount: %d \n", curthread->t_fd_table[fd]->vn->vn_opencount,curthread->t_fd_table[fd]->vn->vn_refcount);
 		//vfs_close(curthread->t_fd_table[fd]->vn);
 		lock_destroy(curthread->t_fd_table[fd]->lock);
 		kfree(curthread->t_fd_table[fd]->vn);
 		kfree(curthread->t_fd_table[fd]);	
-		kprintf("kernel: successfully closed fd %d", fd);
+		//kprintf("kernel: successfully closed fd %d", fd);
 		return 0;
 	}
-	kprintf("kernel: could not close fd %d, it was probably never open \n", fd);
+	//kprintf("kernel: could not close fd %d, it was probably never open \n", fd);
 	return -1;
 }
 

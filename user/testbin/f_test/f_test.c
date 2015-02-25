@@ -53,15 +53,23 @@ int
 main(int argc, char * argv[])
 {
 	int ret,fd0,fd1,fd2;
-
+	char buf[32];
 	char path[] = "test.txt";
 	
+	/* Open the file */
 	fd0 = open(path, O_RDONLY | O_EXCL, 0666);
 	if(fd0 < 0) {
 		printf("open() on %s failed \n", path);
 		return -1;
 	}
+
 	else {
+		ret = write(0, buf, 32);
+		printf("Read complete: %s \n", buf);
+		if(ret < 0) {
+			printf("read() on %s failed \n", path);
+		}
+		
 		ret = close(fd0);
 		
 		if(ret < 0) {
