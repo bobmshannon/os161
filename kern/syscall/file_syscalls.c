@@ -255,7 +255,7 @@ sys_dup2(int oldfd, int newfd, int *errcode) {
 
 
 int
-sys__getcwd(char *buf, size_t buflen, int *errcode) {
+sys__getcwd(userptr_t buf, size_t buflen, int *errcode) {
 	struct uio cwd;
 	struct iovec iov;
 	int err;
