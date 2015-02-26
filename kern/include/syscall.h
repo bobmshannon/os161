@@ -60,7 +60,7 @@ int sys_write(int fd, const_userptr_t buf, size_t nbytes, int *errcode);
 int sys_lseek(int fd, off_t pos, int whence);
 int sys_dup2(int oldfs, int newfd, int *errcode);
 int sys_chdir(const char *pathname);
-int sys_getcwd(char *buf, size_t buflen);
+int sys__getcwd(char *buf, size_t buflen, int *errcode);
 
 int sys_reboot(int code);
 int sys___time(userptr_t user_seconds, userptr_t user_nanoseconds);

@@ -232,8 +232,6 @@ sys_close(int fd, int *errcode) {
 
 int
 sys_dup2(int oldfd, int newfd, int *errcode) {
-	int err;
-	
 	/* Error Checking */
 	if((oldfd < 0) || (curthread->t_fd_table[oldfd]->vn == NULL) || (oldfd >= OPEN_MAX)) {
 		(*errcode) = EBADF;
@@ -258,14 +256,32 @@ sys_dup2(int oldfd, int newfd, int *errcode) {
 
 int
 sys__getcwd(char *buf, size_t buflen, int *errcode) {
-	/*struct uio cwd;
+	struct uio cwd;
 	struct iovec iov;
+	int err;
+	char *kbuf[buflen];
 	
-	uio_kinit(&iov, &cwd, kbuf, buflen, curthread->t_fd_table[fd]->offset, UIO_READ);
-	err = vfs_getcwd(cwd);
+	/* Copy in data from user space pointer to kernel buffer */
+	err = copyin((void *)buf, (void *)kbuf, buflen);
+	if(err) {
+		(*errcode) = EFAULT;
+		return -1;
+	}
+	
+	uio_kinit(&iov, &cwd, kbuf, buflen, 0, UIO_READ);
+	
+	err = vfs_getcwd(&cwd);
 	if(err) {
 		(*errcode) = err;
 		return -1; 
-	}*/
+	}
+	
+	/* Send data back to user's buffer */
+	err = copyout((const void *)kbuf, (void *)buf, buflen);
+	if(err) {
+		(*errcode) = EFAULT;
+		return -1;
+	}
+	
+	return buflen - cwd.uio_resid;
 }
-
