@@ -217,12 +217,44 @@ sys_close(int fd, int *errcode) {
 		return -1;
 	}
 	
+	lock_acquire(curthread->t_fd_table[fd]->lock);
+		curthread->t_fd_table[fd]->ref_count -= 1;
+	lock_release(curthread->t_fd_table[fd]->lock);
+	
 	/* Close vnode and free memory */
-	lock_destroy(curthread->t_fd_table[fd]->lock);
-	kfree(curthread->t_fd_table[fd]->vn);
-	kfree(curthread->t_fd_table[fd]);	
+	if(curthread->t_fd_table[fd]->ref_count == 0) {
+		lock_destroy(curthread->t_fd_table[fd]->lock);
+		kfree(curthread->t_fd_table[fd]->vn);
+		kfree(curthread->t_fd_table[fd]);	
+	}
 	return 0;
 }
+
+int
+sys_dup2(int oldfd, int newfd, int *errcode) {
+	int err;
+	
+	/* Error Checking */
+	if((oldfd < 0) || (curthread->t_fd_table[oldfd]->vn == NULL) || (oldfd >= OPEN_MAX)) {
+		(*errcode) = EBADF;
+		return -1;
+	}
+
+	if((newfd < 0) || (newfd >= OPEN_MAX)){
+		(*errcode) = EBADF;
+		return -1;
+	}
+
+	/* Close newfd if open */
+	if(curthread->t_fd_table[newfd]->vn != NULL){
+			sys_close(newfd, errcode);
+	}
+
+	curthread->t_fd_table[newfd] = curthread->t_fd_table[oldfd];
+
+	return 0;	
+}
+
 
 int
 sys__getcwd(char *buf, size_t buflen, int *errcode) {
