@@ -59,10 +59,16 @@ sys_dup2(int oldfd, int newfd, int *errcode) {
 		return -1;
 	}
 
+	/*Close newfd if open*/
+	if(curthread->t_fd_table[newfd]->vn != NULL){
+		lock_destroy(curthread->t_fd_table[newfd]->lock);
+		kfree(curthread->t_fd_table[newfd]->vn);
+		kfree(curthread->t_fd_table[newfd]);
+	}
+
 	curthread->t_fd_table[newfd] = curthread->t_fd_table[oldfd];
 
-	
-	
+	return 0;	
 }
 
 
