@@ -285,3 +285,27 @@ sys__getcwd(char *buf, size_t buflen, int *errcode) {
 	
 	return buflen - cwd.uio_resid;
 }
+
+int
+sys_chdir(const_userptr_t path, int *errcode) {
+	/* Initialize some stuff */
+	int err;
+	char pathname[NAME_MAX];
+	size_t len;
+	
+	/* Copy in path name from user space */
+	err = copyinstr(path, pathname, NAME_MAX, &len);
+	if(err) {
+		(*errcode) = EFAULT;
+		return -1;
+	}
+	
+	/* Change directory */
+	err = vfs_chdir(pathname);
+	if(err) {
+		(*errcode) = err;
+		return -1;
+	}
+	
+	return 0;
+}
