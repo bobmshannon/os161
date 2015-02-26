@@ -28,65 +28,58 @@
  */
 
 /*
- * Razvan Surdulescu
- * abhi shelat
- * April 28 1997
- * 
- * Test suite for Nachos HW4--The Filesystem
+ * f_write.c
  *
- * Modified by dholland 1/31/2001 for OS/161
+ *	This used to be a separate binary, because it came from Nachos
+ *	and nachos didn't support fork(). However, in OS/161 there's
+ *	no reason to make it a separate binary; doing so just makes
+ *	the test flaky.
  *
- * This should run successfully (on SFS) when the file system
- * assignment is complete.
+ *
+ * 	It will start writing into a file, concurrently with
+ * 	one or more instances of f_read.
+ *
  */
 
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <stdio.h>
-#include <kern/limits.h>
-#include <string.h>
+#define SectorSize   512
+
+#define TMULT        50
+#define FSIZE        ((SectorSize + 1) * TMULT)
+
+#define FNAME        "f-testfile"
+#define READCHAR     'r'
+#define WRITECHAR    'w'
+
 #include <unistd.h>
+#include <stdio.h>
 #include <err.h>
 #include "f_hdr.h"
 
-int
-main(int argc, char * argv[])
+static char buffer[SectorSize + 1];
+
+void
+subproc_write(void)
 {
-	int ret,fd0,fd1,fd2,i;
-	char buf[] = "\nWriting to stdout: This is some test text used for writing. \n";
-	char path[] = "/test.txt";
-	(void)path;
-	(void)fd0;
-	(void)ret;
-	
-	/* Open & close a file */
-	fd0 = open(path, O_RDONLY, 0666);
-	if(fd0 < 0) {
-		printf("\nopen(%s) failed \n", path);
+	int fd;
+	int i;
+
+	for (i=0; i < SectorSize + 1; i++) {
+		buffer[i] = WRITECHAR;
 	}
-	else {
-		printf("\nopen(%s) succeeded \n", path);
-	}
-	ret = close(fd0);
-	if(ret) {
-		printf("close(%s) failed", path);
-	}
-	else {
-		printf("close(%s) suceeded", path);
-	}
-	
-	/* Print some output */
-	for(i = 0; i < 20; i++) {
-		printf(buf);
+  
+	printf("File Writer starting ...\n");
+
+	fd = open(FNAME, O_WRONLY);
+	if (fd < 0) {
+		err(1, "%s: open", FNAME);
 	}
 
-		
-	(void)fd1;
-	(void)fd2;
-	(void)argc;
-	(void)argv;
-	
-	return 0;
+	for (i=0; i<TMULT; i++) {
+		// yield();
+		write(fd, buffer, SectorSize + 1);
+	}
+
+	close(fd);
+
+	printf("File Write exited successfully!\n");
 }
-
-
