@@ -224,4 +224,32 @@ sys_close(int fd, int *errcode) {
 	return 0;
 }
 
+int
+sys_dup2(int oldfd, int newfd, int *errcode) {
+	// Clone the file handle oldfd onto the file handle newfd.
+	// If newfd names an already open file, that file is closed.
+	
+	/*Error Checking */
+	if((oldfd < 0) || (curthread->t_fd_table[oldfd]->vn == NULL) || (oldfd >= OPEN_MAX)) {
+		(*errcode) = EBADF;
+		return -1;
+	}
+
+	if((newfd < 0) || (newfd >= OPEN_MAX)){
+		(*errcode) = EBADF;
+		return -1;
+	}
+
+	/*Close newfd if open*/
+	if(curthread->t_fd_table[newfd]->vn != NULL){
+		lock_destroy(curthread->t_fd_table[newfd]->lock);
+		kfree(curthread->t_fd_table[newfd]->vn);
+		kfree(curthread->t_fd_table[newfd]);
+	}
+
+	curthread->t_fd_table[newfd] = curthread->t_fd_table[oldfd];
+
+	return 0;	
+}
+
 

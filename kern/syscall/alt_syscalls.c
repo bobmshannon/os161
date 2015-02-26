@@ -44,9 +44,23 @@
 
 
 int
-dup2(int oldfd, int newfd) {
+sys_dup2(int oldfd, int newfd, int *errcode) {
 	// Clone the file handle oldfd onto the file handle newfd.
 	// If newfd names an already open file, that file is closed.
+	
+	/*Error Checking */
+	if((oldfd < 0) || (curthread->t_fd_table[oldfd]->vn == NULL) || (oldfd >= OPEN_MAX)) {
+		(*errcode) = EBADF;
+		return -1;
+	}
+
+	if((newfd < 0) || (newfd >= OPEN_MAX)){
+		(*errcode) = EBADF;
+		return -1;
+	}
+
+	curthread->t_fd_table[newfd] = curthread->t_fd_table[oldfd];
+
 	
 	
 }
