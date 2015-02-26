@@ -43,7 +43,7 @@
 #include <stat.h>
 
 int 
-sys_open(const_userptr_t path, int flags, int mode) {
+sys_open(const_userptr_t path, int flags, int mode, int *errcode) {
 	struct vnode *v;
 	struct stat *s;
 	char pathname[NAME_MAX];
@@ -56,19 +56,20 @@ sys_open(const_userptr_t path, int flags, int mode) {
 	/* Copy in path name from user space */
 	err = copyinstr(path, pathname, NAME_MAX, &len);
 	if(err) {
-		//kprintf("kernel: error copying %s from user space \n", pathname);
-		return err;
+		(*errcode) = EFAULT;
+		return -1;
 	}
 	
 	/* Open vnode and assign pointer to v */
 	err = vfs_open(pathname, flags, mode, &v);
 	if(err) {
-		//kprintf("kernel: could not open %s, vop_open returned %d \n", pathname, err);
+		(*errcode) = err;
 		return -1;
 	}
 	
 	/* Find open slot in file descriptor table */
 	int fd;
+	
 	for(i = 0; i < OPEN_MAX; i++) {
 		if(curthread->t_fd_table[i]->vn == NULL) {
 			fd = i;
@@ -76,80 +77,57 @@ sys_open(const_userptr_t path, int flags, int mode) {
 		}
 		
 		if(i == (OPEN_MAX - 1) && curthread->t_fd_table[i] != NULL) {
-			//kprintf("kernel: could not open %s, open file limit reached\n", pathname);
-			return EMFILE;	// Process's file descriptor table is full
+			(*errcode) = EMFILE;	// Process's file descriptor table is full
+			return -1;
 		}
 	}
 	
 	/* Initialize file descriptor */
 	curthread->t_fd_table[fd]->flags = flags; 
+	
 	if(flags >= 32) {	// O_APPEND was passed in as a flag, set offset to end of file
 		filesize = VOP_STAT(v, s);
 		curthread->t_fd_table[fd]->offset = filesize;
-		//kprintf("kernel: O_APPEND flag detected, using offset %d \n", filesize);
 		kfree(s);
 	}
 	else {
 		curthread->t_fd_table[fd]->offset = 0;
 	}
+	
 	curthread->t_fd_table[fd]->ref_count = 1;
 	curthread->t_fd_table[fd]->lock = lock_create(pathname);
 	curthread->t_fd_table[fd]->vn = v;
 
-	//kprintf("kernel: successfully opened %s, fd %d \n", pathname, fd);
 	return fd;
 }
 
 int
-sys_read(int fd, userptr_t buf, size_t buflen) {
+sys_read(int fd, userptr_t buf, size_t buflen, int *errcode) {
 	/* Initialize some stuff */
 	struct uio read;
 	struct iovec iov;
-	int err, flagmode, readable;
+	int err;
 	char *kbuf[buflen];
 	
 	/* Copy in data from user space pointer to kernel buffer */
-	copyin(buf, (void *)kbuf, buflen);
+	err = copyin(buf, (void *)kbuf, buflen);
+	if(err) {
+		(*errcode) = EFAULT;
+		return -1;
+	}
 	
 	/* Error checking */
-	if((fd < 0) || (curthread->t_fd_table[fd]->vn == NULL) || (fd >= OPEN_MAX)) {
-		return EBADF;
+	if(fd < 0 || fd >= OPEN_MAX || (curthread->t_fd_table[fd]->vn == NULL)) {
+		(*errcode) = EBADF;
+		return -1;
 	}
-	
-	else if(buf == NULL) {
-		return EFAULT;
-	}
-
-	flagmode = curthread->t_fd_table[fd]->flags & O_ACCMODE;
-	switch(flagmode) {
-	case O_RDONLY:
-		readable = 1;
-		break;
-	case O_RDONLY | 
-	case O_WRONLY:
-		readable = 0;
-		break;
-	case O_RDWR:
-		readable = 1;
-		break;
-	default:
-		readable = 0;
-		//not working.
-		break;
-	}
-	
-	
-	if(readable != 1) {
-		return EBADF;
-	}
-	
 	
 	/* Do the read */
 	lock_acquire(curthread->t_fd_table[fd]->lock);
 		uio_kinit(&iov, &read, kbuf, buflen, curthread->t_fd_table[fd]->offset, UIO_READ);
 		err = VOP_READ(curthread->t_fd_table[fd]->vn, &read);
 		if(err) {
-			kprintf("Read error \n");
+			(*errcode) = err;
 			return -1;
 		}
 		
@@ -157,51 +135,34 @@ sys_read(int fd, userptr_t buf, size_t buflen) {
 	lock_release(curthread->t_fd_table[fd]->lock);
 	
 	/* Send data back to user's buffer */
-	copyout((const void *)kbuf, buf, buflen);
+	err = copyout((const void *)kbuf, buf, buflen);
+	if(err) {
+		(*errcode) = EFAULT;
+		return -1;
+	}
 	
 	return buflen - read.uio_resid;
 }
 
 int
-sys_write(int fd, const_userptr_t buf, size_t nbytes) {
+sys_write(int fd, const_userptr_t buf, size_t nbytes, int *errcode) {
 	/* Initialize some stuff */
 	struct uio write;
 	struct iovec iov;
-	int err, flagmode, writable;
+	int err;
 	char *kbuf[nbytes];
 	
 	/* Copy in data from user space pointer to kernel buffer */
-	copyin(buf, (void *)kbuf, nbytes);
+	err = copyin(buf, (void *)kbuf, nbytes);
+	if(err) {
+		(*errcode) = EFAULT;
+		return -1;
+	}
 	
 	/* Error checking */
 	if((fd < 0) || (curthread->t_fd_table[fd]->vn == NULL) || (fd >= OPEN_MAX)) {
-		return EBADF;
-	}
-	
-	else if(buf == NULL) {
-		return EFAULT;
-	}
-	
-	flagmode = curthread->t_fd_table[fd]->flags & O_ACCMODE;
-	switch(flagmode) {
-	case O_RDONLY:
-		writable = 0;
-		break;
-	case O_WRONLY:
-		writable = 1;
-		break;
-	case O_RDWR:
-		writable = 1;
-		break;
-	default:
-		writable = 0;
-		//not working.
-		break;
-	}
-	
-	
-	if(writable != 1) {
-		return EBADF;
+		(*errcode) = EBADF;
+		return -1;
 	}
 	
 	/* Do the write */
@@ -209,7 +170,7 @@ sys_write(int fd, const_userptr_t buf, size_t nbytes) {
 		uio_kinit(&iov, &write, kbuf, nbytes, curthread->t_fd_table[fd]->offset, UIO_WRITE);
 		err = VOP_WRITE(curthread->t_fd_table[fd]->vn, &write);
 		if(err) {
-			kprintf("Write error \n");
+			(*errcode) = err;
 			return -1;
 		}
 	lock_release(curthread->t_fd_table[fd]->lock);
@@ -220,19 +181,27 @@ sys_write(int fd, const_userptr_t buf, size_t nbytes) {
 
 
 int
-sys_close(int fd) {
-	if(curthread->t_fd_table[fd]->vn != NULL) {
-		/* Close vnode and free memory */
-		//kprintf("vn_opencount: %d | vn_refcount: %d \n", curthread->t_fd_table[fd]->vn->vn_opencount,curthread->t_fd_table[fd]->vn->vn_refcount);
-		//vfs_close(curthread->t_fd_table[fd]->vn);
-		lock_destroy(curthread->t_fd_table[fd]->lock);
-		kfree(curthread->t_fd_table[fd]->vn);
-		kfree(curthread->t_fd_table[fd]);	
-		//kprintf("kernel: successfully closed fd %d", fd);
-		return 0;
+sys_close(int fd, int *errcode) {
+	/* Error checking */
+	if((fd < 0) || (curthread->t_fd_table[fd]->vn == NULL) || (fd >= OPEN_MAX)) {
+		(*errcode) = EBADF;
+		return -1;
 	}
-	//kprintf("kernel: could not close fd %d, it was probably never open \n", fd);
-	return -1;
+	
+	/* Close vnode and free memory */
+	lock_destroy(curthread->t_fd_table[fd]->lock);
+	kfree(curthread->t_fd_table[fd]->vn);
+	kfree(curthread->t_fd_table[fd]);	
+	return 0;
 }
+
+/*
+int
+dup2(int oldfd, int newfd) {
+	// Clone the file handle oldfd onto the file handle newfd.
+	// If newfd names an already open file, that file is closed.
+	
+	
+}*/
 
 

@@ -53,10 +53,10 @@ vaddr_t entrypoint);
 /*
  * Prototypes for IN-KERNEL entry points for system call implementations.
  */
-int sys_open(const_userptr_t path, int flags, int mode); 
-int sys_close(int fd);
-int sys_read(int fd, userptr_t buf, size_t buflen);
-int sys_write(int fd, const_userptr_t buf, size_t nbytes);
+int sys_open(const_userptr_t path, int flags, int mode, int *errcode); 
+int sys_close(int fd, int *errcode);
+int sys_read(int fd, userptr_t buf, size_t buflen, int *errcode);
+int sys_write(int fd, const_userptr_t buf, size_t nbytes, int *errcode);
 int sys_lseek(int fd, off_t pos, int whence);
 int sys_dup2(int oldfs, int newfd);
 int sys_chdir(const char *pathname);

@@ -52,25 +52,27 @@
 int
 main(int argc, char * argv[])
 {
-	int ret,fd0,fd1,fd2;
+	int ret,fd0,fd1,fd2,i;
 	char buf[] = "\nWriting to stdout: This is some test text used for writing. \n";
 	char path[] = "test.txt";
-	
-	/* Open & close a file */
-	fd0 = open(path, O_RDONLY | O_EXCL, 0666);
-	printf("\nopen(%s) successful \n", path);
+	(void)path;
+	(void)fd0;
+	(void)ret;
+	/* Open & close a file
+	fd0 = open(path, O_RDONLY, 0666);
 	if(fd0 < 0) {
 		printf("open() on %s failed \n", path);
-		return -1;
+		//return -1;
 	}
 	ret = close(fd0);
 	printf("close(%s) successful", path);
-	
-	/* Write to stdout */
-	ret = write(1, buf, strlen(buf));
-	if(ret < 0) {
-		printf("write() on %s failed \n", path);
+	 */
+	 
+	/* Print some output */
+	for(i = 0; i < 20; i++) {
+		printf(buf);
 	}
+
 		
 	(void)fd1;
 	(void)fd2;

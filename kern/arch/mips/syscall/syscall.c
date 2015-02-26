@@ -80,6 +80,7 @@ syscall(struct trapframe *tf)
 {
 	int callno;
 	int32_t retval;
+	int *errcode;
 	int err;
 
 	KASSERT(curthread != NULL);
@@ -98,29 +99,28 @@ syscall(struct trapframe *tf)
 	 */
 
 	retval = 0;
-
+	errcode = kmalloc(sizeof(int));
+	(*errcode) = 0;
+	
 	switch (callno) {
 	    case SYS_reboot:
-		err = sys_reboot(tf->tf_a0);
-		break;
-
+			err = sys_reboot(tf->tf_a0);
+			break;
 	    case SYS___time:
-		err = sys___time((userptr_t)tf->tf_a0,
-				 (userptr_t)tf->tf_a1);
-		break;
-
-	    /* Add stuff here */
+			err = sys___time((userptr_t)tf->tf_a0,
+					 (userptr_t)tf->tf_a1);
+			break;
 		case SYS_open:
-			retval = sys_open((const_userptr_t)tf->tf_a0, tf->tf_a1, tf->tf_a2);
+			retval = sys_open((const_userptr_t)tf->tf_a0, tf->tf_a1, tf->tf_a2, errcode);
 			break;
 		case SYS_close:
-			retval = sys_close(tf->tf_a0);
+			retval = sys_close(tf->tf_a0, errcode);
 			break;
 		case SYS_write:
-			retval = sys_write(tf->tf_a0, (const_userptr_t)tf->tf_a1, tf->tf_a2);
+			retval = sys_write(tf->tf_a0, (const_userptr_t)tf->tf_a1, tf->tf_a2, errcode);
 			break;
 		case SYS_read:
-			retval = sys_read(tf->tf_a0, (userptr_t)tf->tf_a1, tf->tf_a2);
+			retval = sys_read(tf->tf_a0, (userptr_t)tf->tf_a1, tf->tf_a2, errcode);
 			break;
 			
 	    default:
@@ -130,13 +130,13 @@ syscall(struct trapframe *tf)
 	}
 
 
-	if (err || retval == EBADF || retval == EFAULT) {
+	if (err || retval == -1) {
 		/*
 		 * Return the error code. This gets converted at
 		 * userlevel to a return value of -1 and the error
 		 * code in errno.
 		 */
-		tf->tf_v0 = err;
+		tf->tf_v0 = (*errcode);
 		tf->tf_a3 = 1;      /* signal an error */
 	}
 	else {
