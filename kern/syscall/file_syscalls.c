@@ -224,13 +224,4 @@ sys_close(int fd, int *errcode) {
 	return 0;
 }
 
-/*
-int
-dup2(int oldfd, int newfd) {
-	// Clone the file handle oldfd onto the file handle newfd.
-	// If newfd names an already open file, that file is closed.
-	
-	
-}*/
-
 
