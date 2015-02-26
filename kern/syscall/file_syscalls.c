@@ -48,7 +48,7 @@ sys_open(const_userptr_t path, int flags, int mode, int *errcode) {
 	struct stat *s;
 	char pathname[NAME_MAX];
 	size_t len;
-	int err, i, filesize;
+	int err, i, filesize, flagresult;
 	
 	/* Check flags */
 		// vop_open should do most of this for us...
@@ -98,6 +98,25 @@ sys_open(const_userptr_t path, int flags, int mode, int *errcode) {
 	curthread->t_fd_table[fd]->lock = lock_create(pathname);
 	curthread->t_fd_table[fd]->vn = v;
 
+	flagresult = flags & O_ACCMODE;
+
+	switch(flagresult){
+	case O_RDONLY:
+		curthread->t_fd_table[fd]->writable = false;
+		curthread->t_fd_table[fd]->readable = true;
+		break;
+	case O_WRONLY:
+		curthread->t_fd_table[fd]->writable = true;
+		curthread->t_fd_table[fd]->readable = false;
+		break;
+	case O_RDWR:
+		curthread->t_fd_table[fd]->writable = true;
+		curthread->t_fd_table[fd]->readable = true;
+		break;
+	default:
+		break;
+	}
+
 	return fd;
 }
 
@@ -119,6 +138,10 @@ sys_read(int fd, userptr_t buf, size_t buflen, int *errcode) {
 	/* Error checking */
 	if(fd < 0 || fd >= OPEN_MAX || (curthread->t_fd_table[fd]->vn == NULL)) {
 		(*errcode) = EBADF;
+		return -1;
+	}
+
+	if(!curthread->t_fd_table[fd]->readable){
 		return -1;
 	}
 	
@@ -163,6 +186,10 @@ sys_write(int fd, const_userptr_t buf, size_t nbytes, int *errcode) {
 	if((fd < 0) || (curthread->t_fd_table[fd]->vn == NULL) || (fd >= OPEN_MAX)) {
 		(*errcode) = EBADF;
 		return -1;
+	}
+
+	if(!curthread->t_fd_table[fd]->writable){
+	return -1;
 	}
 	
 	/* Do the write */
