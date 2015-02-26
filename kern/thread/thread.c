@@ -180,6 +180,8 @@ init_fd_table(void) {
 	curthread->t_fd_table[0]->ref_count = 0;
 	curthread->t_fd_table[0]->vn = stdin;
 	curthread->t_fd_table[0]->lock = lock_create("stdin");
+	curthread->t_fd_table[0]->writable = true;
+	curthread->t_fd_table[0]->readable = true;
 	
 	/* stdout */
 	curthread->t_fd_table[1] = kmalloc(sizeof(struct fd*));
@@ -188,13 +190,18 @@ init_fd_table(void) {
 	curthread->t_fd_table[1]->ref_count = 0;
 	curthread->t_fd_table[1]->vn = stdin;
 	curthread->t_fd_table[1]->lock = lock_create("stdout");
+	curthread->t_fd_table[1]->writable = true;
+	curthread->t_fd_table[1]->readable = false;
 
+	/* stderr */
 	curthread->t_fd_table[2] = kmalloc(sizeof(struct fd*));
 	curthread->t_fd_table[2]->flags = 0;
 	curthread->t_fd_table[2]->offset = 0;
 	curthread->t_fd_table[2]->ref_count = 0;
 	curthread->t_fd_table[2]->vn = stdin;
 	curthread->t_fd_table[2]->lock = lock_create("stderr");
+	curthread->t_fd_table[2]->writable = true;
+	curthread->t_fd_table[2]->readable = true;
 
 	for(i = 3; i < OPEN_MAX; i++) {
 		curthread->t_fd_table[i] = kmalloc(sizeof(struct fd*));

@@ -142,6 +142,7 @@ sys_read(int fd, userptr_t buf, size_t buflen, int *errcode) {
 	}
 
 	if(!curthread->t_fd_table[fd]->readable){
+		(*errcode) = EBADF;
 		return -1;
 	}
 	
@@ -189,7 +190,8 @@ sys_write(int fd, const_userptr_t buf, size_t nbytes, int *errcode) {
 	}
 
 	if(!curthread->t_fd_table[fd]->writable){
-	return -1;
+		(*errcode) = EBADF;
+		return -1;
 	}
 	
 	/* Do the write */
