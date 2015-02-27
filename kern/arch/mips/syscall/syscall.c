@@ -97,17 +97,17 @@ syscall(struct trapframe *tf)
 	 * deal with it except for calls that return other values, 
 	 * like write.
 	 */
-
+	
 	retval = 0;
 	errcode = kmalloc(sizeof(int));
 	(*errcode) = 0;
 	
 	switch (callno) {
 	    case SYS_reboot:
-			err = sys_reboot(tf->tf_a0);
+			(*errcode) = sys_reboot(tf->tf_a0);
 			break;
 	    case SYS___time:
-			err = sys___time((userptr_t)tf->tf_a0,
+			(*errcode) = sys___time((userptr_t)tf->tf_a0,
 					 (userptr_t)tf->tf_a1);
 			break;
 		case SYS_open:
@@ -136,7 +136,7 @@ syscall(struct trapframe *tf)
 	}
 
 
-	if (err || retval == -1) {
+	if (*errcode || retval == -1) {
 		/*
 		 * Return the error code. This gets converted at
 		 * userlevel to a return value of -1 and the error
