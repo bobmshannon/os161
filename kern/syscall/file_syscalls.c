@@ -324,7 +324,6 @@ sys_lseek(int fd, off_t pos, int whence, int *errcode) {
 	
 	/* Update seek position */
 	lock_acquire(curthread->t_fd_table[fd]->lock);
-
 	switch(whence) {
 		case SEEK_SET:
 			curthread->t_fd_table[fd]->offset = pos;
@@ -337,16 +336,20 @@ sys_lseek(int fd, off_t pos, int whence, int *errcode) {
 		case SEEK_END:
 			VOP_STAT(curthread->t_fd_table[fd]->vn, filestats);
 			newpos = pos + filestats->st_size;
-			// find position of end of file and add to pos
 			break;
 		default:
-			kfree(filestats);
+			//kfree(filestats);
 			(*errcode) = EINVAL;
 			return -1;
 	}
 	lock_release(curthread->t_fd_table[fd]->lock);
 	
 	kfree(filestats);
+	
+	if(newpos < 0) {
+		(*errcode) = EINVAL;
+		return -1;
+	}
 	
 	return newpos;
 }

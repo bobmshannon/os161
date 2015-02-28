@@ -82,6 +82,7 @@ syscall(struct trapframe *tf)
 	int32_t retval;
 	int *errcode;
 	int err;
+	off_t offset, new_offset;
 
 	KASSERT(curthread != NULL);
 	KASSERT(curthread->t_curspl == 0);
@@ -98,6 +99,7 @@ syscall(struct trapframe *tf)
 	 * like write.
 	 */
 	
+	new_offset = 0;
 	retval = 0;
 	errcode = kmalloc(sizeof(int));
 	(*errcode) = 0;
@@ -124,19 +126,28 @@ syscall(struct trapframe *tf)
 			break;
 		case SYS_dup2:
 			retval = sys_dup2(tf->tf_a0, tf->tf_a1, errcode);
+			break;
 		case SYS___getcwd:
 			retval = sys__getcwd((userptr_t)tf->tf_a0, tf->tf_a1, errcode);
+			break;
 		case SYS_chdir:
 			retval = sys_chdir((const_userptr_t)tf->tf_a0, errcode);
-			
+			break;
+		case SYS_lseek:
+			offset = 0;
+			offset += tf->tf_a2;	// Get upper 32 bits
+			offset <<= 32;
+			offset += tf->tf_a3;	// Get lower 32 bits
+			new_offset = sys_lseek(tf->tf_a0, offset, (int)tf->tf_sp + 16, (int *)tf->tf_sp + 16 + sizeof(int));
+			break;
 	    default:
-		kprintf("Unknown syscall %d\n", callno);
-		err = ENOSYS;
-		break;
+			kprintf("Unknown syscall %d\n", callno);
+			err = ENOSYS;
+			break;
 	}
 
 
-	if (*errcode || retval == -1) {
+	if (*errcode || retval == -1 || new_offset == -1) {
 		/*
 		 * Return the error code. This gets converted at
 		 * userlevel to a return value of -1 and the error
@@ -144,6 +155,11 @@ syscall(struct trapframe *tf)
 		 */
 		tf->tf_v0 = (*errcode);
 		tf->tf_a3 = 1;      /* signal an error */
+	}
+	else if(new_offset) {
+		tf->tf_v0 = new_offset >> 32; // upper 32 bits
+		new_offset &= 0xFFFFFFFF00000000;
+		tf->tf_v1 = new_offset; // lower 32 bits
 	}
 	else {
 		/* Success. */

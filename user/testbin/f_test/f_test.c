@@ -55,11 +55,12 @@ main(int argc, char * argv[])
 	int ret,fd0,fd1,fd2,i;
 	char buf[] = "\nWriting to stdout: This is some test text used for writing. \n";
 	char path[] = "/test.txt";
+	off_t pos;
 	(void)path;
 	(void)fd0;
 	(void)ret;
 	
-	/* Open & close a file */
+	/* Open & close a file
 	fd0 = open(path, O_RDONLY, 0666);
 	if(fd0 < 0) {
 		printf("\nopen(%s) failed \n", path);
@@ -73,8 +74,13 @@ main(int argc, char * argv[])
 	}
 	else {
 		printf("close(%s) suceeded", path);
-	}
+	} */
 	
+	/* lseek test */
+	fd0 = open(path, O_RDONLY, 0666);
+	pos = 0;
+	lseek(fd0, pos, SEEK_END);
+
 	/* Print some output */
 	for(i = 0; i < 20; i++) {
 		printf(buf);
