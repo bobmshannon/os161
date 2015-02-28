@@ -57,7 +57,7 @@ int sys_open(const_userptr_t path, int flags, int mode, int *errcode);
 int sys_close(int fd, int *errcode);
 int sys_read(int fd, userptr_t buf, size_t buflen, int *errcode);
 int sys_write(int fd, const_userptr_t buf, size_t nbytes, int *errcode);
-int sys_lseek(int fd, off_t pos, int whence);
+off_t sys_lseek(int fd, off_t pos, int whence, int *errcode);
 int sys_dup2(int oldfs, int newfd, int *errcode);
 int sys_chdir(const_userptr_t path, int *errcode);
 int sys__getcwd(userptr_t buf, size_t buflen, int *errcode);

@@ -41,6 +41,7 @@
 #include <types.h>
 #include <kern/errno.h>
 #include <stat.h>
+#include <kern/seek.h>
 
 int 
 sys_open(const_userptr_t path, int flags, int mode, int *errcode) {
@@ -48,7 +49,7 @@ sys_open(const_userptr_t path, int flags, int mode, int *errcode) {
 	struct stat *s;
 	char pathname[NAME_MAX];
 	size_t len;
-	int err, i, filesize, flagresult;
+	int err, i, flagresult;
 	
 	/* Check flags */
 		// vop_open should do most of this for us...
@@ -86,8 +87,8 @@ sys_open(const_userptr_t path, int flags, int mode, int *errcode) {
 	curthread->t_fd_table[fd]->flags = flags; 
 	
 	if(flags >= 32) {	// O_APPEND was passed in as a flag, set offset to end of file
-		filesize = VOP_STAT(v, s);
-		curthread->t_fd_table[fd]->offset = filesize;
+		VOP_STAT(v, s);
+		curthread->t_fd_table[fd]->offset = s->st_size;
 		kfree(s);
 	}
 	else {
@@ -308,4 +309,44 @@ sys_chdir(const_userptr_t path, int *errcode) {
 	}
 	
 	return 0;
+}
+
+off_t
+sys_lseek(int fd, off_t pos, int whence, int *errcode) {
+	off_t newpos;
+	struct stat *filestats;
+	
+	/* Error Checking */
+	if((fd < 0) || (curthread->t_fd_table[fd]->vn == NULL) || (fd >= OPEN_MAX)) {
+		(*errcode) = EBADF;
+		return -1;
+	}
+	
+	/* Update seek position */
+	lock_acquire(curthread->t_fd_table[fd]->lock);
+
+	switch(whence) {
+		case SEEK_SET:
+			curthread->t_fd_table[fd]->offset = pos;
+			newpos = pos;
+			break;
+		case SEEK_CUR:
+			curthread->t_fd_table[fd]->offset += pos;
+			newpos = curthread->t_fd_table[fd]->offset;
+			break;
+		case SEEK_END:
+			VOP_STAT(curthread->t_fd_table[fd]->vn, filestats);
+			newpos = pos + filestats->st_size;
+			// find position of end of file and add to pos
+			break;
+		default:
+			kfree(filestats);
+			(*errcode) = EINVAL;
+			return -1;
+	}
+	lock_release(curthread->t_fd_table[fd]->lock);
+	
+	kfree(filestats);
+	
+	return newpos;
 }
