@@ -53,11 +53,23 @@ sys_open(const_userptr_t path, int flags, int mode, int *errcode) {
 	
 	/* Check flags */
 		// vop_open should do most of this for us...
+		
+	/* Error checking */
+	if(path == NULL) {
+		(*errcode) = EFAULT;
+		return -1;
+	}
 	
 	/* Copy in path name from user space */
 	err = copyinstr(path, pathname, NAME_MAX, &len);
 	if(err) {
 		(*errcode) = EFAULT;
+		return -1;
+	}
+	
+	/* Error checking */
+	if(strlen(pathname) == 0) {
+		(*errcode) = ENODEV;
 		return -1;
 	}
 	
@@ -98,24 +110,27 @@ sys_open(const_userptr_t path, int flags, int mode, int *errcode) {
 	curthread->t_fd_table[fd]->ref_count = 1;
 	curthread->t_fd_table[fd]->lock = lock_create(pathname);
 	curthread->t_fd_table[fd]->vn = v;
-
+	
+	/* Set whether the file descriptor should be in
+	 * read, write or read-write mode
+	 */
 	flagresult = flags & O_ACCMODE;
 
 	switch(flagresult){
-	case O_RDONLY:
-		curthread->t_fd_table[fd]->writable = false;
-		curthread->t_fd_table[fd]->readable = true;
-		break;
-	case O_WRONLY:
-		curthread->t_fd_table[fd]->writable = true;
-		curthread->t_fd_table[fd]->readable = false;
-		break;
-	case O_RDWR:
-		curthread->t_fd_table[fd]->writable = true;
-		curthread->t_fd_table[fd]->readable = true;
-		break;
-	default:
-		break;
+		case O_RDONLY:
+			curthread->t_fd_table[fd]->writable = false;
+			curthread->t_fd_table[fd]->readable = true;
+			break;
+		case O_WRONLY:
+			curthread->t_fd_table[fd]->writable = true;
+			curthread->t_fd_table[fd]->readable = false;
+			break;
+		case O_RDWR:
+			curthread->t_fd_table[fd]->writable = true;
+			curthread->t_fd_table[fd]->readable = true;
+			break;
+		default:
+			break;
 	}
 
 	return fd;
@@ -303,6 +318,7 @@ sys_chdir(const_userptr_t path, int *errcode) {
 	
 	/* Copy in path name from user space */
 	err = copyinstr(path, kbuf, PATH_MAX, &len);
+	
 	if(err) {
 		(*errcode) = EFAULT;
 		return -1;
@@ -310,6 +326,7 @@ sys_chdir(const_userptr_t path, int *errcode) {
 	
 	/* Change directory */
 	err = vfs_chdir(kbuf);
+	
 	if(err) {
 		kprintf("kernel: changing cwd failed \n");
 		(*errcode) = err;
@@ -318,12 +335,14 @@ sys_chdir(const_userptr_t path, int *errcode) {
 	}
 	
 	kfree(kbuf);
+	
 	return 0;
 }
 
 off_t
 sys_lseek(int fd, off_t pos, int whence, int *errcode) {
 	off_t newpos;
+	int err;
 	struct stat *filestats;
 	
 	/* Error Checking */
@@ -344,12 +363,17 @@ sys_lseek(int fd, off_t pos, int whence, int *errcode) {
 			newpos = curthread->t_fd_table[fd]->offset;
 			break;
 		case SEEK_END:
-			VOP_STAT(curthread->t_fd_table[fd]->vn, filestats);
+			err = VOP_STAT(curthread->t_fd_table[fd]->vn, filestats);
+			if(err) {
+				(*errcode) = err;
+				return -1;
+			}
 			newpos = pos + filestats->st_size;
 			break;
 		default:
-			//kfree(filestats);
+			kfree(filestats);
 			(*errcode) = EINVAL;
+			lock_release(curthread->t_fd_table[fd]->lock);
 			return -1;
 	}
 	lock_release(curthread->t_fd_table[fd]->lock);
