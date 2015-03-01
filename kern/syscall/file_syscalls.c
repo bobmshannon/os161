@@ -169,7 +169,7 @@ sys_read(int fd, userptr_t buf, size_t buflen, int *errcode) {
 		uio_kinit(&iov, &read, kbuf, buflen, curthread->t_fd_table[fd]->offset, UIO_READ);
 		err = VOP_READ(curthread->t_fd_table[fd]->vn, &read);
 		if(err) {
-			(*errcode) = err;
+			(*errcode) = err
 			kfree(kbuf);
 			return -1;
 		}
