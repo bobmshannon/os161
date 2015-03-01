@@ -369,6 +369,7 @@ sys_lseek(int fd, off_t pos, int whence, int *errcode) {
 				return -1;
 			}
 			newpos = pos + filestats.st_size;
+			curthread->t_fd_table[fd]->offset = newpos;
 			break;
 		default:
 			(*errcode) = EINVAL;
