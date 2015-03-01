@@ -26,46 +26,75 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
+ 
+#include <types.h>
+#include <lib.h>
+#include <array.h>
+#include <synch.h>
+#include <vnode.h>
+#include <uio.h>
+#include <vfs.h>
+#include <copyinout.h>
+#include <kern/fcntl.h>
+#include <current.h>
+#include <syscall.h>
+#include <types.h>
+#include <kern/errno.h>
+#include <stat.h>
+#include <kern/seek.h>
 
-#ifndef _SYSCALL_H_
-#define _SYSCALL_H_
+/* 
+OS/161 kernel [? for menu]: p /testbin/badcall_b
+Unknownp syscall 0
+Unknown syscall 2
+(program name unknown): FAILURE: exec NULL: Operation succeeded
+Unknown syscall 3
+ /testbin/badcall_b
+Operation took 0.000187280 seconds
+Unknown syscall 4
+(program name unknoOwSn/): FAILURE: wait for pid -8: Operati1o6n1  skuecrcneeeld e[d
+? for menu]: Unknown syscall 4
+(program name unknown): FAILURE: wait for pid -1: Operation succeeded
+Unknown syscall 4
+(program name unknown): FAILURE: pid zero: Operation succeeded
+Unknown syscall 4
+(program name unknown): FAILURE: nonexistent pid: Operation succeeded
+Unknown syscall 0
+Unknown syscall 3
+*/
 
-struct trapframe; /* from <machine/trapframe.h> */
+int 
+sys_execv(const_userptr_t program, char **args, int *errcode) {
+	(void)program;
+	(void)args;
+	(void)errcode;
+	
+	/* Error checking. */
+	if(program == NULL) {
+		(*errcode) = ENOENT;
+		return -1;
+	}
+	
+	return 0;
+}
 
-/*
- * The system call dispatcher.
- */
+int 
+sys_waitpid(pid_t pid, userptr_t status, int options, int *errcode) {
+	(void)pid;
+	(void)status;
+	(void)options;
+	(void)errcode;
+	
+	/* Error checking. */
+	if(pid < 0) {
+		(*errcode) = ESRCH;
+		return -1;
+	}
+	else if(pid == 0) {
+		(*errcode) = ECHILD;
+		return -1;
+	}
+	
+	return 0;
+}
 
-void syscall(struct trapframe *tf);
-
-/*
- * Support functions.
- */
-
-/* Helper for fork(). You write this. */
-void enter_forked_process(struct trapframe *tf);
-
-/* Enter user mode. Does not return. */
-void enter_new_process(int argc, userptr_t argv, vaddr_t stackptr,
-vaddr_t entrypoint);
-
-
-/* File related system calls */
-int sys_open(const_userptr_t path, int flags, int mode, int *errcode); 
-int sys_close(int fd, int *errcode);
-int sys_read(int fd, userptr_t buf, size_t buflen, int *errcode);
-int sys_write(int fd, const_userptr_t buf, size_t nbytes, int *errcode);
-off_t sys_lseek(int fd, off_t pos, int whence, int *errcode);
-int sys_dup2(int oldfs, int newfd, int *errcode);
-int sys_chdir(const_userptr_t path, int *errcode);
-int sys__getcwd(userptr_t buf, size_t buflen, int *errcode);
-
-/* Process related system calls */
-int sys_execv(const_userptr_t program, char **args, int *errcode);
-int sys_waitpid(pid_t pid, userptr_t status, int options, int *errcode);
-
-/* Miscellaneous system calls */
-int sys_reboot(int code);
-int sys___time(userptr_t user_seconds, userptr_t user_nanoseconds);
-
-#endif /* _SYSCALL_H_ */
