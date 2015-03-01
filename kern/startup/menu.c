@@ -150,7 +150,7 @@ common_prog(int nargs, char **args)
 	 * the kernel menu and /testbin/fileonlytest from competing for stdout. 
 	 * This is required to make the test pass on ops-class.org until
 	 * waitpid() and exit() system calls are implemented.
-	 */
+	 */ 
 	if(strlen(args[0]) == 21) {
 		clocksleep(5); 
 	}
