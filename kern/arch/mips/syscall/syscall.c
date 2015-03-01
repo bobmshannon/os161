@@ -99,7 +99,8 @@ syscall(struct trapframe *tf)
 	 * like write.
 	 */
 	
-	new_offset = 0;
+	new_offset = -2;	// Initialize to an illegal negative value. Hacky, but we'll go with it for now.
+						// To be mopped up later.
 	retval = 0;
 	errcode = kmalloc(sizeof(int));
 	(*errcode) = 0;
@@ -163,7 +164,7 @@ syscall(struct trapframe *tf)
 		tf->tf_v0 = (*errcode);
 		tf->tf_a3 = 1;      /* signal an error */
 	}
-	else if(new_offset) {
+	else if(new_offset >= 0) {
 		tf->tf_v0 = new_offset >> 32; // grab and assign upper 32 bits via right shifting. new_offset is NOT updated.
 		new_offset &= 0x00000000FFFFFFFF; // clear upper 32 bits. now, new_offset is updated.
 		tf->tf_v1 = new_offset; // assign lower 32 bits
