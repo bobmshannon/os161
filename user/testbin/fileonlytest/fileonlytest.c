@@ -131,7 +131,8 @@ main(int argc, char **argv)
 	// ended up where we wrote it. Tests read() and lseek(SEEK_SET).
 	
 	printf("Verifying write.\n");
-
+	(void)readbuf;
+	
 	for (i = BUFFER_COUNT - 1; i >= 0; i--) {
     target = i * sizeof(writebuf);
 		pos = lseek(fh, target, SEEK_SET);
@@ -147,7 +148,7 @@ main(int argc, char **argv)
 				err(1, "read mismatch: pos=%llu, readbuf[j]=%d, i*j=%d, i=%d, j=%d", pos, readbuf[j], i * j, i, j);
 			}
 		}
-	}
+	} 
 
 	// 23 Mar 2012 : GWA : Close the file.
 	

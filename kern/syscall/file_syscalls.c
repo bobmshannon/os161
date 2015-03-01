@@ -239,7 +239,7 @@ sys_close(int fd, int *errcode) {
 	
 	/* Close vnode and free memory */
 	if(curthread->t_fd_table[fd]->ref_count == 0) {
-		lock_destroy(curthread->t_fd_table[fd]->lock);
+		//lock_destroy(curthread->t_fd_table[fd]->lock);
 		kfree(curthread->t_fd_table[fd]->vn);
 		kfree(curthread->t_fd_table[fd]);	
 	}
