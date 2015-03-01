@@ -53,39 +53,11 @@ int
 main(int argc, char * argv[])
 {
 	int ret,fd0,fd1,fd2,i,err;
-	char buf[] = "\nThis is some test text used for writing. Take a seat. \n";
-	char rbuf[128];
-	char path[] = "test.txt";
+	char buf[] = "\nWriting to stdout: This is some test text used for writing. \n";
+	char path[] = "/test.txt";
 	char dir[] = "../";
 	char cwd[128], *p;
 	off_t pos;
-	
-	/* Open and read a file */
-	fd0 = open(path, O_RDWR | O_CREAT, 0666);
-	if(fd0 < 0) {
-		printf("\nopen(%s) failed \n", path);
-	}
-	else {
-		printf("\nopen(%s) succeeded \n", path);
-	}
-	
-	err = write(fd0, &buf, strlen(buf)); 
-	if(err == -1) {
-		printf("\nwrite(%s) failed \n", path);
-	}
-	else {
-		printf("\nWrote %d bytes to %s \n", err, path);
-	}
-	
-	lseek(fd0, 0, SEEK_SET);
-	
-	err = read(fd0, &rbuf, 128);
-	if(err == -1) {
-		printf("\nread(%s) failed \n", path);
-	}
-	else {
-		printf("\nRead %d bytes from %s:\n %s", err, path, rbuf);
-	}
 	
 	/* Open & close a file
 	fd0 = open(path, O_RDONLY, 0666);
@@ -112,13 +84,13 @@ main(int argc, char * argv[])
 		printf("Successfully changed directory to %s \n", dir);
 	}*/
 	
-	/* getcwd test 
+	/* getcwd test */
 	//getcwd(cwd, 128);
 	//printf("Current working directory is %s \n", cwd);
 	chdir(".");
 	getcwd(cwd, 128);
 	printf("Current working directory is %s \n", cwd);
-	*/
+	
 	/* lseek test 
 	fd0 = open(path, O_RDONLY, 0666);
 	pos = 0;
@@ -131,7 +103,6 @@ main(int argc, char * argv[])
 	
 	while(1) { }
 
-	(void)cwd;
 	(void)dir;
 	(void)err;
 	(void)fd1;
