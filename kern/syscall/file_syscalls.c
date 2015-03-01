@@ -67,7 +67,7 @@ sys_open(const_userptr_t path, int flags, int mode, int *errcode) {
 		return -1;
 	}
 	
-	/* Error checking */
+	/* More error checking */
 	if(strlen(pathname) == 0) {
 		(*errcode) = ENODEV;
 		return -1;
