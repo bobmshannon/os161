@@ -150,17 +150,20 @@ sys_read(int fd, userptr_t buf, size_t buflen, int *errcode) {
 	err = copyin(buf, kbuf, buflen);
 	if(err) {
 		(*errcode) = EFAULT;
+		kfree(kbuf);
 		return -1;
 	}
 	
 	/* Error checking */
 	if(fd < 0 || fd >= OPEN_MAX || (curthread->t_fd_table[fd]->vn == NULL)) {
 		(*errcode) = EBADF;
+		kfree(kbuf);
 		return -1;
 	}
 
 	if(!curthread->t_fd_table[fd]->readable){
 		(*errcode) = EBADF;
+		kfree(kbuf);
 		return -1;
 	}
 	
@@ -172,10 +175,6 @@ sys_read(int fd, userptr_t buf, size_t buflen, int *errcode) {
 			(*errcode) = err;
 			kfree(kbuf);
 			return -1;
-		}
-		
-		if(fd == 3) {
-			//kprintf("\nkernel: read '%s' from fd %d \n", kbuf, fd);
 		}
 		
 		curthread->t_fd_table[fd]->offset += (buflen - read.uio_resid);
@@ -214,19 +213,19 @@ sys_write(int fd, const_userptr_t buf, size_t nbytes, int *errcode) {
 	/* Error checking */
 	if((fd < 0) || (curthread->t_fd_table[fd]->vn == NULL) || (fd >= OPEN_MAX)) {
 		(*errcode) = EBADF;
+		kfree(kbuf);
 		return -1;
 	}
 
 	if(!curthread->t_fd_table[fd]->writable){
 		(*errcode) = EBADF;
+		kfree(kbuf);
 		return -1;
 	}
 	
 	/* Do the write */
 	lock_acquire(curthread->t_fd_table[fd]->lock);
-		if(fd == 3) {
-		//kprintf("\nkernel: writing %s to fd %d \n", kbuf, fd);
-		}
+
 		uio_kinit(&iov, &write, kbuf, nbytes, curthread->t_fd_table[fd]->offset, UIO_WRITE);
 		err = VOP_WRITE(curthread->t_fd_table[fd]->vn, &write);
 		if(err) {
