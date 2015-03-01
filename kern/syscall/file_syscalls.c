@@ -175,7 +175,7 @@ sys_read(int fd, userptr_t buf, size_t buflen, int *errcode) {
 		}
 		
 		if(fd == 3) {
-			kprintf("\nkernel: read '%s' from fd %d \n", kbuf, fd);
+			//kprintf("\nkernel: read '%s' from fd %d \n", kbuf, fd);
 		}
 		
 		curthread->t_fd_table[fd]->offset += (buflen - read.uio_resid);
@@ -225,7 +225,7 @@ sys_write(int fd, const_userptr_t buf, size_t nbytes, int *errcode) {
 	/* Do the write */
 	lock_acquire(curthread->t_fd_table[fd]->lock);
 		if(fd == 3) {
-		kprintf("\nkernel: writing %s to fd %d \n", kbuf, fd);
+		//kprintf("\nkernel: writing %s to fd %d \n", kbuf, fd);
 		}
 		uio_kinit(&iov, &write, kbuf, nbytes, curthread->t_fd_table[fd]->offset, UIO_WRITE);
 		err = VOP_WRITE(curthread->t_fd_table[fd]->vn, &write);
@@ -348,7 +348,7 @@ sys_chdir(const_userptr_t path, int *errcode) {
 	err = vfs_chdir(kbuf);
 	
 	if(err) {
-		kprintf("kernel: changing cwd failed \n");
+		//kprintf("kernel: changing cwd failed \n");
 		(*errcode) = err;
 		kfree(kbuf);
 		return -1;
