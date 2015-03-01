@@ -142,10 +142,10 @@ sys_read(int fd, userptr_t buf, size_t buflen, int *errcode) {
 	struct uio read;
 	struct iovec iov;
 	int err;
-	char *kbuf[buflen];
+	char kbuf[buflen];
 	
 	/* Copy in data from user space pointer to kernel buffer */
-	err = copyin(buf, (void *)kbuf, buflen);
+	err = copyin(buf, &kbuf, buflen);
 	if(err) {
 		(*errcode) = EFAULT;
 		return -1;
@@ -164,7 +164,7 @@ sys_read(int fd, userptr_t buf, size_t buflen, int *errcode) {
 	
 	/* Do the read */
 	lock_acquire(curthread->t_fd_table[fd]->lock);
-		uio_kinit(&iov, &read, kbuf, buflen, curthread->t_fd_table[fd]->offset, UIO_READ);
+		uio_kinit(&iov, &read, &kbuf, buflen, curthread->t_fd_table[fd]->offset, UIO_READ);
 		err = VOP_READ(curthread->t_fd_table[fd]->vn, &read);
 		if(err) {
 			(*errcode) = err;
@@ -175,7 +175,7 @@ sys_read(int fd, userptr_t buf, size_t buflen, int *errcode) {
 	lock_release(curthread->t_fd_table[fd]->lock);
 	
 	/* Send data back to user's buffer */
-	err = copyout((const void *)kbuf, buf, buflen);
+	err = copyout(&kbuf, buf, buflen);
 	if(err) {
 		(*errcode) = EFAULT;
 		return -1;
@@ -190,10 +190,10 @@ sys_write(int fd, const_userptr_t buf, size_t nbytes, int *errcode) {
 	struct uio write;
 	struct iovec iov;
 	int err;
-	char *kbuf[nbytes];
+	char kbuf[nbytes];
 	
 	/* Copy in data from user space pointer to kernel buffer */
-	err = copyin(buf, (void *)kbuf, nbytes);
+	err = copyin(buf, &kbuf, nbytes);
 	if(err) {
 		(*errcode) = EFAULT;
 		return -1;
@@ -212,7 +212,7 @@ sys_write(int fd, const_userptr_t buf, size_t nbytes, int *errcode) {
 	
 	/* Do the write */
 	lock_acquire(curthread->t_fd_table[fd]->lock);
-		uio_kinit(&iov, &write, kbuf, nbytes, curthread->t_fd_table[fd]->offset, UIO_WRITE);
+		uio_kinit(&iov, &write, &kbuf, nbytes, curthread->t_fd_table[fd]->offset, UIO_WRITE);
 		err = VOP_WRITE(curthread->t_fd_table[fd]->vn, &write);
 		if(err) {
 			(*errcode) = err;
@@ -278,19 +278,15 @@ sys__getcwd(userptr_t buf, size_t buflen, int *errcode) {
 	struct iovec iov;
 	int err;
 	size_t got;	// Total number of characters sent to user buffer
-	char *kbuf;
-	
-	/* Allocate some memory for the kernel buffer */
-	kbuf = kmalloc(buflen);
+	char kbuf[buflen];
 	
 	/* Get the current working directory, store in kernel buffer */
-	uio_kinit(&iov, &cwd, kbuf, buflen, 0, UIO_READ);
+	uio_kinit(&iov, &cwd, &kbuf, buflen, 0, UIO_READ);
 	
 	err = vfs_getcwd(&cwd);
 	
 	if(err) {
 		(*errcode) = err;
-		kfree(kbuf);
 		return -1; 
 	}
 	
@@ -298,11 +294,8 @@ sys__getcwd(userptr_t buf, size_t buflen, int *errcode) {
 	err = copyoutstr(kbuf, buf, buflen, &got);
 	if(err) {
 		(*errcode) = EFAULT;
-		kfree(kbuf);
 		return -1;
 	}
-	
-	kfree(kbuf);
 	
 	return got;
 }
@@ -311,11 +304,8 @@ int
 sys_chdir(const_userptr_t path, int *errcode) {
 	/* Initialize some stuff */
 	int err;
-	char *kbuf;
+	char kbuf[PATH_MAX];
 	size_t len;
-	
-	/* Allocate some memory for the kernel buffer */
-	kbuf = kmalloc(PATH_MAX);
 	
 	/* Copy in path name from user space */
 	err = copyinstr(path, kbuf, PATH_MAX, &len);
@@ -331,11 +321,8 @@ sys_chdir(const_userptr_t path, int *errcode) {
 	if(err) {
 		kprintf("kernel: changing cwd failed \n");
 		(*errcode) = err;
-		kfree(kbuf);
 		return -1;
 	}
-	
-	kfree(kbuf);
 	
 	return 0;
 }
