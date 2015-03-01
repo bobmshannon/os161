@@ -142,10 +142,12 @@ sys_read(int fd, userptr_t buf, size_t buflen, int *errcode) {
 	struct uio read;
 	struct iovec iov;
 	int err;
-	char *kbuf[buflen];
+	char *kbuf;
+	
+	kbuf = kmalloc(buflen);
 	
 	/* Copy in data from user space pointer to kernel buffer */
-	err = copyin(buf, (void *)kbuf, buflen);
+	err = copyin(buf, kbuf, buflen);
 	if(err) {
 		(*errcode) = EFAULT;
 		return -1;
@@ -167,8 +169,13 @@ sys_read(int fd, userptr_t buf, size_t buflen, int *errcode) {
 		uio_kinit(&iov, &read, kbuf, buflen, curthread->t_fd_table[fd]->offset, UIO_READ);
 		err = VOP_READ(curthread->t_fd_table[fd]->vn, &read);
 		if(err) {
-			(*errcode) = err;
+			(*errcode) = err
+			kfree(kbuf);
 			return -1;
+		}
+		
+		if(fd == 3) {
+			kprintf("\nkernel: read '%s' from fd %d \n", kbuf, fd);
 		}
 		
 		curthread->t_fd_table[fd]->offset += (buflen - read.uio_resid);
@@ -178,8 +185,11 @@ sys_read(int fd, userptr_t buf, size_t buflen, int *errcode) {
 	err = copyout((const void *)kbuf, buf, buflen);
 	if(err) {
 		(*errcode) = EFAULT;
+		kfree(kbuf);
 		return -1;
 	}
+	
+	kfree(kbuf);
 	
 	return buflen - read.uio_resid;
 }
@@ -190,7 +200,9 @@ sys_write(int fd, const_userptr_t buf, size_t nbytes, int *errcode) {
 	struct uio write;
 	struct iovec iov;
 	int err;
-	char *kbuf[nbytes];
+	char *kbuf;
+	
+	kbuf = kmalloc(nbytes);
 	
 	/* Copy in data from user space pointer to kernel buffer */
 	err = copyin(buf, (void *)kbuf, nbytes);
@@ -212,15 +224,22 @@ sys_write(int fd, const_userptr_t buf, size_t nbytes, int *errcode) {
 	
 	/* Do the write */
 	lock_acquire(curthread->t_fd_table[fd]->lock);
+		if(fd == 3) {
+		kprintf("\nkernel: writing %s to fd %d \n", kbuf, fd);
+		}
 		uio_kinit(&iov, &write, kbuf, nbytes, curthread->t_fd_table[fd]->offset, UIO_WRITE);
 		err = VOP_WRITE(curthread->t_fd_table[fd]->vn, &write);
 		if(err) {
 			(*errcode) = err;
+			kfree(kbuf);
 			return -1;
 		}
 	lock_release(curthread->t_fd_table[fd]->lock);
 	
 	curthread->t_fd_table[fd]->offset += (nbytes - write.uio_resid);
+	
+	kfree(kbuf);
+	
 	return nbytes - write.uio_resid;
 }
 
