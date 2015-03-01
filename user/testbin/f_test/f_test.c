@@ -52,13 +52,12 @@
 int
 main(int argc, char * argv[])
 {
-	int ret,fd0,fd1,fd2,i;
+	int ret,fd0,fd1,fd2,i,err;
 	char buf[] = "\nWriting to stdout: This is some test text used for writing. \n";
 	char path[] = "/test.txt";
+	char dir[] = "../";
+	char cwd[128], *p;
 	off_t pos;
-	(void)path;
-	(void)fd0;
-	(void)ret;
 	
 	/* Open & close a file
 	fd0 = open(path, O_RDONLY, 0666);
@@ -76,21 +75,47 @@ main(int argc, char * argv[])
 		printf("close(%s) suceeded", path);
 	} */
 	
-	/* lseek test */
+	/* chdir test 
+	err = chdir(dir);
+	if(err) {
+		printf("Error changing directory to %s \n", dir);
+	}
+	else {
+		printf("Successfully changed directory to %s \n", dir);
+	}*/
+	
+	/* getcwd test */
+	//getcwd(cwd, 128);
+	//printf("Current working directory is %s \n", cwd);
+	chdir(".");
+	getcwd(cwd, 128);
+	printf("Current working directory is %s \n", cwd);
+	
+	/* lseek test 
 	fd0 = open(path, O_RDONLY, 0666);
 	pos = 0;
 	lseek(fd0, pos, SEEK_END);
-
-	/* Print some output */
+*/
+	/* Print some output 
 	for(i = 0; i < 20; i++) {
 		printf(buf);
-	}
+	}*/
+	
+	while(1) { }
 
-		
+	(void)dir;
+	(void)err;
 	(void)fd1;
 	(void)fd2;
 	(void)argc;
 	(void)argv;
+	(void)buf;
+	(void)i;
+	(void)path;
+	(void)fd0;
+	(void)ret;
+	(void)pos;
+	(void)p;
 	
 	return 0;
 }

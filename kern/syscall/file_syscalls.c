@@ -257,57 +257,67 @@ sys_dup2(int oldfd, int newfd, int *errcode) {
 
 int
 sys__getcwd(userptr_t buf, size_t buflen, int *errcode) {
+	/* Initialize some stuff */
 	struct uio cwd;
 	struct iovec iov;
 	int err;
-	char *kbuf[buflen];
+	size_t got;	// Total number of characters sent to user buffer
+	char *kbuf;
 	
-	/* Copy in data from user space pointer to kernel buffer */
-	err = copyin((void *)buf, (void *)kbuf, buflen);
-	if(err) {
-		(*errcode) = EFAULT;
-		return -1;
-	}
+	/* Allocate some memory for the kernel buffer */
+	kbuf = kmalloc(buflen);
 	
+	/* Get the current working directory, store in kernel buffer */
 	uio_kinit(&iov, &cwd, kbuf, buflen, 0, UIO_READ);
 	
 	err = vfs_getcwd(&cwd);
+	
 	if(err) {
 		(*errcode) = err;
+		kfree(kbuf);
 		return -1; 
 	}
 	
-	/* Send data back to user's buffer */
-	err = copyout((const void *)kbuf, (void *)buf, buflen);
+	/* Send data back to user buffer */
+	err = copyoutstr(kbuf, buf, buflen, &got);
 	if(err) {
 		(*errcode) = EFAULT;
+		kfree(kbuf);
 		return -1;
 	}
 	
-	return buflen - cwd.uio_resid;
+	kfree(kbuf);
+	
+	return got;
 }
 
 int
 sys_chdir(const_userptr_t path, int *errcode) {
 	/* Initialize some stuff */
 	int err;
-	char pathname[NAME_MAX];
+	char *kbuf;
 	size_t len;
 	
+	/* Allocate some memory for the kernel buffer */
+	kbuf = kmalloc(PATH_MAX);
+	
 	/* Copy in path name from user space */
-	err = copyinstr(path, pathname, NAME_MAX, &len);
+	err = copyinstr(path, kbuf, PATH_MAX, &len);
 	if(err) {
 		(*errcode) = EFAULT;
 		return -1;
 	}
 	
 	/* Change directory */
-	err = vfs_chdir(pathname);
+	err = vfs_chdir(kbuf);
 	if(err) {
+		kprintf("kernel: changing cwd failed \n");
 		(*errcode) = err;
+		kfree(kbuf);
 		return -1;
 	}
 	
+	kfree(kbuf);
 	return 0;
 }
 
