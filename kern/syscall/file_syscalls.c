@@ -343,7 +343,7 @@ off_t
 sys_lseek(int fd, off_t pos, int whence, int *errcode) {
 	off_t newpos;
 	int err;
-	struct stat *filestats;
+	struct stat filestats;
 	
 	/* Error Checking */
 	if((fd < 0) || (curthread->t_fd_table[fd]->vn == NULL) || (fd >= OPEN_MAX)) {
@@ -363,22 +363,19 @@ sys_lseek(int fd, off_t pos, int whence, int *errcode) {
 			newpos = curthread->t_fd_table[fd]->offset;
 			break;
 		case SEEK_END:
-			err = VOP_STAT(curthread->t_fd_table[fd]->vn, filestats);
+			err = VOP_STAT(curthread->t_fd_table[fd]->vn, &filestats);
 			if(err) {
 				(*errcode) = err;
 				return -1;
 			}
-			newpos = pos + filestats->st_size;
+			newpos = pos + filestats.st_size;
 			break;
 		default:
-			kfree(filestats);
 			(*errcode) = EINVAL;
 			lock_release(curthread->t_fd_table[fd]->lock);
 			return -1;
 	}
 	lock_release(curthread->t_fd_table[fd]->lock);
-	
-	kfree(filestats);
 	
 	if(newpos < 0) {
 		(*errcode) = EINVAL;

@@ -81,7 +81,7 @@ syscall(struct trapframe *tf)
 	int callno;
 	int32_t retval;
 	int *errcode;
-	int err;
+	int err, whence;
 	off_t offset, new_offset;
 
 	KASSERT(curthread != NULL);
@@ -138,7 +138,8 @@ syscall(struct trapframe *tf)
 			offset += tf->tf_a2;	// Get upper 32 bits
 			offset <<= 32;
 			offset += tf->tf_a3;	// Get lower 32 bits
-			new_offset = sys_lseek(tf->tf_a0, offset, (int)tf->tf_sp + 16, (int *)tf->tf_sp + 16 + sizeof(int));
+			whence = *(int *)(tf->tf_sp+16);
+			new_offset = sys_lseek(tf->tf_a0, offset, whence, errcode);
 			break;
 		case SYS_execv:
 			retval = sys_execv((const_userptr_t)tf->tf_a0, (char **)tf->tf_a1, errcode);
@@ -163,9 +164,10 @@ syscall(struct trapframe *tf)
 		tf->tf_a3 = 1;      /* signal an error */
 	}
 	else if(new_offset) {
-		tf->tf_v0 = new_offset >> 32; // upper 32 bits
-		new_offset &= 0xFFFFFFFF00000000;
-		tf->tf_v1 = new_offset; // lower 32 bits
+		tf->tf_v0 = new_offset >> 32; // grab and assign upper 32 bits via right shifting. new_offset is NOT updated.
+		new_offset &= 0x00000000FFFFFFFF; // clear upper 32 bits. now, new_offset is updated.
+		tf->tf_v1 = new_offset; // assign lower 32 bits
+		tf->tf_a3 = 0;
 	}
 	else {
 		/* Success. */

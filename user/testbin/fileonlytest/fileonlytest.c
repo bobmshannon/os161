@@ -83,6 +83,7 @@ main(int argc, char **argv)
 			writebuf[j] = i * 2 * j;
 		}
 		len = write(fh, writebuf, sizeof(writebuf));
+		printf("\n len: %d | writebuf size: %d\n", len, sizeof(writebuf));
 		if (len != sizeof(writebuf)) {
 			err(1, "write failed");
 		}
@@ -90,7 +91,9 @@ main(int argc, char **argv)
     // 23 Mar 2012 : GWA : Use lseek() to skip the odd guys.
 	
     target = (i + 1) * 2 * sizeof(writebuf);
+	
     pos = lseek(fh, sizeof(writebuf), SEEK_END);
+	printf("\n fd: %d | target: %llu | offset: %d \n", fh, target, sizeof(writebuf));
     if (pos != target) {
       err(1, "(even) lseek failed: %llu != %llu", pos, target);
     }
