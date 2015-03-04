@@ -57,6 +57,8 @@ struct vnode;
 /* Macro to test if two addresses are on the same kernel stack */
 #define SAME_STACK(p1, p2)     (((p1) & STACK_MASK) == ((p2) & STACK_MASK))
 
+/* System-wide process/thread table. */
+struct process* process_table[RUNNING_MAX];
 
 /* States a thread can be in. */
 typedef enum {
@@ -75,7 +77,7 @@ struct thread {
 	char *t_name;			/* Name of this thread */
 	const char *t_wchan_name;	/* Name of wait channel, if sleeping */
 	threadstate_t t_state;		/* State this thread is in */
-
+	pid_t t_pid;
 	/*
 	 * Thread subsystem internal fields.
 	 */
@@ -118,6 +120,15 @@ struct thread {
 
 /* Initialize file descriptor table */
 void init_fd_table(void);
+
+/* Initialize process table */
+void init_process_table(void);
+
+/* Add a process to process table */
+pid_t add_process_entry(struct thread *entry);
+
+/* Remove a process from process table */
+int remove_process_entry(pid_t pid);
 
 /* Call once during system startup to allocate data structures. */
 void thread_bootstrap(void);

@@ -49,6 +49,7 @@
 #include <vfs.h>
 #include <kern/fcntl.h>
 #include <vnode.h>
+#include <process.h>
 
 #include "opt-synchprobs.h"
 #include "opt-defaultscheduler.h"
@@ -154,8 +155,10 @@ thread_create(const char *name)
 	/* VFS fields */
 	thread->t_cwd = NULL;
 
-	/* If you add to struct thread, be sure to initialize here */
-
+	/* PID */
+	pid_t pid = add_process_entry(thread);
+	thread->t_pid = pid;
+	
 	return thread;
 }
 
@@ -211,6 +214,22 @@ init_fd_table(void) {
 		curthread->t_fd_table[i]->vn = NULL;		
 	}
 } 
+
+/* 
+ * Initialize system wide process/thread table.
+ */
+void
+init_process_table() {
+	int i;
+	
+	for(i = 0; i < RUNNING_MAX; i++) {
+		process_table[i] = kmalloc(sizeof(struct process*));
+		process_table[i]->pid = -1;
+		process_table[i]->ppid = -1;
+		process_table[i]->self = NULL;
+		process_table[i]->has_exited = false;
+	}
+}
 
 /*
  * Create a CPU structure. This is used for the bootup CPU and
@@ -316,6 +335,9 @@ thread_destroy(struct thread *thread)
 
 	/* sheer paranoia */
 	thread->t_wchan_name = "DESTROYED";
+	
+	/* Free up a slot in the process table */
+	remove_process_entry(thread->t_pid);
 
 	kfree(thread->t_name);
 	kfree(thread);
@@ -409,6 +431,9 @@ thread_bootstrap(void)
 	struct thread *bootthread;
 
 	cpuarray_init(&allcpus);
+	
+	/* Initialize the process table. */
+	init_process_table();
 
 	/*
 	 * Create the cpu structure for the bootup CPU, the one we're
@@ -437,6 +462,43 @@ thread_bootstrap(void)
 	curcpu->c_curthread = curthread;
 
 	/* Done */
+}
+
+/*
+ * Add an entry to the process table.
+ */
+pid_t add_process_entry(struct thread *entry) {
+	int i;
+	pid_t pid;
+	
+	/* Search for an open slot. PID 0 is reserved, so
+	 * we start looping at 1. 
+	 */
+	for(i = 1; i <= RUNNING_MAX; i++) {
+		if(process_table[i]->self == NULL) {
+			process_table[i]->pid = i;
+			process_table[i]->self = entry;
+			process_table[i]->has_exited = false;
+			pid = i;
+			break;
+		}
+	}
+	
+	return pid;
+}
+
+/*
+ * Remove an entry to the process table.
+ */
+int remove_process_entry(pid_t pid) {
+	if(process_table[pid]->self == NULL) {
+		return -1;
+	}
+	
+	process_table[pid]->self = NULL;
+	process_table[pid]->has_exited = true;
+	
+	return 1;
 }
 
 /*
@@ -567,6 +629,11 @@ thread_fork(const char *name,
 		VOP_INCREF(curthread->t_cwd);
 		newthread->t_cwd = curthread->t_cwd;
 	}
+	
+	/* PID */
+	pid_t pid = add_process_entry(newthread);
+	newthread->t_pid = pid;
+	process_table[pid]->ppid = curthread->t_pid;
 
 	/*
 	 * Because new threads come out holding the cpu runqueue lock

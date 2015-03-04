@@ -98,3 +98,8 @@ sys_waitpid(pid_t pid, userptr_t status, int options, int *errcode) {
 	return 0;
 }
 
+pid_t
+sys_getpid(void) {
+	return curthread->t_pid;
+}
+

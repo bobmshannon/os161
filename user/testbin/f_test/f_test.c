@@ -60,6 +60,10 @@ main(int argc, char * argv[])
 	char cwd[128], *p;
 	off_t pos;
 	
+	printf("\n------------------------------------------------\n");
+	printf("       STARTING F_TEST WITH PID #%d\n", getpid());
+	printf("------------------------------------------------\n");
+	
 	/* Open and read a file */
 	fd0 = open(path, O_RDWR | O_CREAT, 0666);
 	if(fd0 < 0) {
