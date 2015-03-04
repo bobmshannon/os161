@@ -42,26 +42,9 @@
 #include <kern/errno.h>
 #include <stat.h>
 #include <kern/seek.h>
-
-/* 
-OS/161 kernel [? for menu]: p /testbin/badcall_b
-Unknownp syscall 0
-Unknown syscall 2
-(program name unknown): FAILURE: exec NULL: Operation succeeded
-Unknown syscall 3
- /testbin/badcall_b
-Operation took 0.000187280 seconds
-Unknown syscall 4
-(program name unknoOwSn/): FAILURE: wait for pid -8: Operati1o6n1  skuecrcneeeld e[d
-? for menu]: Unknown syscall 4
-(program name unknown): FAILURE: wait for pid -1: Operation succeeded
-Unknown syscall 4
-(program name unknown): FAILURE: pid zero: Operation succeeded
-Unknown syscall 4
-(program name unknown): FAILURE: nonexistent pid: Operation succeeded
-Unknown syscall 0
-Unknown syscall 3
-*/
+#include <thread.h>
+#include <process.h>
+#include <kern/wait.h>
 
 int 
 sys_execv(const_userptr_t program, char **args, int *errcode) {
@@ -101,5 +84,14 @@ sys_waitpid(pid_t pid, userptr_t status, int options, int *errcode) {
 pid_t
 sys_getpid(void) {
 	return curthread->t_pid;
+}
+
+void
+sys__exit(int code) {
+	//kprintf("kernel: pid #%d exiting...\n", sys_getpid());
+	pid_t pid = sys_getpid();
+	process_table[pid]->has_exited = true;
+	process_table[pid]->exitcode = code;
+	thread_exit();
 }
 

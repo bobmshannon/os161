@@ -48,6 +48,8 @@
 #include <unistd.h>
 #include <err.h>
 #include "f_hdr.h"
+#include <stdlib.h>
+
 
 int
 main(int argc, char * argv[])
@@ -132,8 +134,6 @@ main(int argc, char * argv[])
 	for(i = 0; i < 20; i++) {
 		printf(buf);
 	}*/
-	
-	while(1) { }
 
 	(void)cwd;
 	(void)dir;

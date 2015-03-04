@@ -224,10 +224,12 @@ init_process_table() {
 	
 	for(i = 0; i < RUNNING_MAX; i++) {
 		process_table[i] = kmalloc(sizeof(struct process*));
-		process_table[i]->pid = -1;
-		process_table[i]->ppid = -1;
+		process_table[i]->pid = RUNNING_MAX + 1;	/* We're initializing these PID's to arbitrary values here. */
+		process_table[i]->ppid = RUNNING_MAX + 1;
 		process_table[i]->self = NULL;
 		process_table[i]->has_exited = false;
+		process_table[i]->waiting = 0;
+		process_table[i]->exitcode = 0;
 	}
 }
 
@@ -335,9 +337,6 @@ thread_destroy(struct thread *thread)
 
 	/* sheer paranoia */
 	thread->t_wchan_name = "DESTROYED";
-	
-	/* Free up a slot in the process table */
-	remove_process_entry(thread->t_pid);
 
 	kfree(thread->t_name);
 	kfree(thread);
@@ -938,6 +937,9 @@ thread_exit(void)
 
 	/* Check the stack guard band. */
 	thread_checkstack(cur);
+	
+	/* Free up a slot in the process table */
+	remove_process_entry(cur->t_pid);
 
 	/* Interrupts off on this processor */
         splhigh();
