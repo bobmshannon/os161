@@ -41,6 +41,9 @@
 #include <sfs.h>
 #include <syscall.h>
 #include <test.h>
+#include <wchan.h>
+#include <current.h>
+#include <process.h>
 #include "opt-synchprobs.h"
 #include "opt-sfs.h"
 #include "opt-net.h"
@@ -141,6 +144,9 @@ common_prog(int nargs, char **args)
 			args /* thread arg */, nargs /* thread arg */,
 			NULL);
 			
+	int pid = curthread->t_pid;
+	waitpid(pid + 1, 0, 0);
+			
 	if (result) {
 		kprintf("thread_fork failed: %s\n", strerror(result));
 		return result;
@@ -152,7 +158,7 @@ common_prog(int nargs, char **args)
 	 * waitpid() and exit() system calls are implemented.
 	 */ 
 	if(strlen(args[0]) == 21) {
-		clocksleep(5); 
+		//clocksleep(5); 
 	}
 
 	return 0;

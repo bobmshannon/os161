@@ -45,6 +45,7 @@
 #include <thread.h>
 #include <process.h>
 #include <kern/wait.h>
+#include <wchan.h>
 
 int 
 sys_execv(const_userptr_t program, char **args, int *errcode) {
@@ -89,9 +90,25 @@ sys_getpid(void) {
 void
 sys__exit(int code) {
 	//kprintf("kernel: pid #%d exiting...\n", sys_getpid());
+
 	pid_t pid = sys_getpid();
 	process_table[pid]->has_exited = true;
 	process_table[pid]->exitcode = code;
+	
+	process_table[pid]->waiting = 0;
+	
 	thread_exit();
 }
 
+pid_t
+waitpid(pid_t pid, int *status, int options) {
+	/* Implement error checking stuff here.
+	 * Refer to man page and OS/161 blog
+	 * for more information. */
+	 
+	process_table[pid]->waiting += 1;
+
+	(void)status;
+	(void)options;
+	return pid;
+}

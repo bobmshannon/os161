@@ -230,6 +230,7 @@ init_process_table() {
 		process_table[i]->has_exited = false;
 		process_table[i]->waiting = 0;
 		process_table[i]->exitcode = 0;
+		process_table[i]->sem = sem_create("sem", 0);
 	}
 }
 
