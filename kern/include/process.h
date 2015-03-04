@@ -26,89 +26,29 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
+
+#ifndef _PROCESS_H_
+#define _PROCESS_H_
+
+/* A simple process structure to represent a running thread.
+ * 
+ * This contains the good stuff needed to implement 
+ * process related system calls. Separating this 
+ * from the existing thread implementation allows
+ * us to add another layer of abstraction which gives
+ * us more flexibility.
+ */
  
-#include <types.h>
-#include <lib.h>
-#include <array.h>
-#include <synch.h>
-#include <vnode.h>
-#include <uio.h>
-#include <vfs.h>
-#include <copyinout.h>
-#include <kern/fcntl.h>
-#include <current.h>
-#include <syscall.h>
-#include <types.h>
-#include <kern/errno.h>
-#include <stat.h>
-#include <kern/seek.h>
-#include <thread.h>
-#include <process.h>
-#include <kern/wait.h>
-#include <wchan.h>
+struct process {
+	pid_t pid;	/* Process unique identifier. */
+	pid_t ppid; /* Parent process unique identifier. */
+	struct thread *self;
+	struct semaphore *sem;
+	struct lock *lock;
+	struct cv *cv;
+	bool has_exited;
+	int exitcode;
+	int waiting; /* Number of waiting processes generated via waitpid() */
+};
 
-int 
-sys_execv(const_userptr_t program, char **args, int *errcode) {
-	(void)program;
-	(void)args;
-	(void)errcode;
-	
-	/* Error checking. */
-	if(program == NULL) {
-		(*errcode) = ENOENT;
-		return -1;
-	}
-	
-	return 0;
-}
-
-int 
-sys_waitpid(pid_t pid, userptr_t status, int options, int *errcode) {
-	(void)pid;
-	(void)status;
-	(void)options;
-	(void)errcode;
-	
-	/* Error checking. */
-	if(pid < 0) {
-		(*errcode) = ESRCH;
-		return -1;
-	}
-	else if(pid == 0) {
-		(*errcode) = ECHILD;
-		return -1;
-	}
-	
-	return 0;
-}
-
-pid_t
-sys_getpid(void) {
-	return curthread->t_pid;
-}
-
-void
-sys__exit(int code) {
-	//kprintf("kernel: pid #%d exiting...\n", sys_getpid());
-
-	pid_t pid = sys_getpid();
-	process_table[pid]->has_exited = true;
-	process_table[pid]->exitcode = code;
-	
-	process_table[pid]->waiting = 0;
-	
-	thread_exit();
-}
-
-pid_t
-waitpid(pid_t pid, int *status, int options) {
-	/* Implement error checking stuff here.
-	 * Refer to man page and OS/161 blog
-	 * for more information. */
-	 
-	process_table[pid]->waiting += 1;
-	
-	(void)status;
-	(void)options;
-	return pid;
-}
+#endif

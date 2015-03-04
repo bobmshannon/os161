@@ -158,7 +158,7 @@ common_prog(int nargs, char **args)
 	 * waitpid() and exit() system calls are implemented.
 	 */ 
 	if(strlen(args[0]) == 21) {
-		//clocksleep(5); 
+		clocksleep(5); 
 	}
 
 	return 0;
