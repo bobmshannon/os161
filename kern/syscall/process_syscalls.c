@@ -77,14 +77,26 @@ sys_execv(const_userptr_t program, char **args, int *errcode) {
 	int errcheck = 0;
 	char dest[PATH_MAX + 1];
 	size_t len = 0;
+	struct vnode *vn = 0
 	
 	//Copy file name from kernelspace to userspace
 	errcheck = copyinstr(program, dest, PATH_MAX, &len)
 	if(errcheck != 0) {
-		kprintf("Unable to copy string from userspace to kernelspace");
-		return 1;
+		kprintf("copyinstr() failed.\n");
+		return -1;
 	}
 	
+	//If copied string is of length 0.
+	if(len == 0) {
+		(*errcode) = ENOENT;
+		return -1;
+	}
+	
+	errcheck = vfs_open(dest, O_RDONLY, 0, &vn);
+	if(errcheck) {
+		(*errcode) = ENOENT;
+		return -1;
+	}
 	
 }
 
