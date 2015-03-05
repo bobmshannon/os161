@@ -139,7 +139,7 @@ common_prog(int nargs, char **args)
 		"synchronization-problems kernel.\n");
 #endif
 	
-	pid_t pid = thread_fork(args[0] /* thread name */,
+	pid_t pid = thread_fork_pid(args[0] /* thread name */,
 			cmd_progthread /* thread function */,
 			args /* thread arg */, nargs /* thread arg */,
 			NULL);
