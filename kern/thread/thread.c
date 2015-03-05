@@ -594,7 +594,7 @@ thread_make_runnable(struct thread *target, bool already_have_lock)
  * start on the same CPU as the caller, unless the scheduler
  * intervenes first.
  */
-int
+pid_t
 thread_fork(const char *name,
 	    void (*entrypoint)(void *data1, unsigned long data2),
 	    void *data1, unsigned long data2,
@@ -659,7 +659,7 @@ thread_fork(const char *name,
 		*ret = newthread;
 	}
 
-	return 0;
+	return newthread->t_pid;
 }
 
 /*

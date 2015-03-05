@@ -62,9 +62,8 @@ int sys__getcwd(userptr_t buf, size_t buflen, int *errcode);
 
 /* Process related system calls */
 int sys_execv(const_userptr_t program, char **args, int *errcode);
-int sys_waitpid(pid_t pid, userptr_t status, int options, int *errcode);
 pid_t sys_getpid(void);
-pid_t waitpid(pid_t pid, int *status, int options);
+pid_t sys_waitpid(pid_t pid, userptr_t status, int options, int *errcode);
 void sys__exit(int code);
 pid_t sys_fork(void);
 
