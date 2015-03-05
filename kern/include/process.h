@@ -43,12 +43,9 @@ struct process {
 	pid_t pid;	/* Process unique identifier. */
 	pid_t ppid; /* Parent process unique identifier. */
 	struct thread *self;
-	struct semaphore *sem;
-	struct lock *lock;
-	struct cv *cv;
+	struct semaphore *wait_sem;
 	bool has_exited;
 	int exitcode;
-	int waiting; /* Number of waiting processes generated via waitpid() */
 };
 
 #endif

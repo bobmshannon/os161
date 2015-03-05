@@ -68,26 +68,25 @@ sys_getpid(void) {
 }
 
 void
-sys__exit(int code) {
-	//kprintf("kernel: pid #%d exiting...\n", sys_getpid());
-
+sys__exit(int code) {	
 	pid_t pid = sys_getpid();
 	process_table[pid]->has_exited = true;
 	process_table[pid]->exitcode = code;
 	
-	process_table[pid]->waiting = 0;
-	
-	V(process_table[pid]->sem);
+	/* Let's keep this really simple by assuming that only
+	 * one process can wait on a specific PID, which in most
+	 * cases would be the parent who called fork. Thus, we
+	 * only decrement the waiting semaphore once.
+	 */
+	V(process_table[pid]->wait_sem);
 	
 	thread_exit();
 }
 
 pid_t 
 sys_waitpid(pid_t pid, userptr_t status, int options, int *errcode) {
-	/* Implement error checking stuff here.
-	 * Refer to man page and OS/161 blog
-	 * for more information. */
-	 
+	// TODO: handle options argument checking.
+	
 	/* Error checking. */
 	if(pid < 0) {
 		(*errcode) = ESRCH;
@@ -98,9 +97,8 @@ sys_waitpid(pid_t pid, userptr_t status, int options, int *errcode) {
 		return -1;
 	}
 	
-	process_table[pid]->waiting += 1;
-	P(process_table[pid]->sem);
-	process_table[pid]->waiting -= 1;
+	P(process_table[pid]->wait_sem);
+	
 	(void)status;
 	(void)options;
 	return pid;

@@ -156,6 +156,16 @@ pid_t thread_fork(const char *name,
                 void *data1, unsigned long data2, 
                 struct thread **ret);
 
+/* Temporary re-definition of thread_fork which instead returns
+ * a process ID. This is required until the fork() system call is 
+ * implemented, and also because C does not support function
+ * overriding AFAIK. So, to prevent code already using thread_fork()
+ * from breaking, a new variant thread_fork_pid is defined.
+ */
+ pid_t thread_fork_pid(const char *name, 
+                void (*func)(void *, unsigned long),
+                void *data1, unsigned long data2, 
+                struct thread **ret);
 /*
  * Cause the current thread to exit.
  * Interrupts need not be disabled.

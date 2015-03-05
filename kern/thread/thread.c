@@ -228,10 +228,8 @@ init_process_table() {
 		process_table[i]->ppid = RUNNING_MAX + 1;
 		process_table[i]->self = NULL;
 		process_table[i]->has_exited = false;
-		process_table[i]->waiting = 0;
 		process_table[i]->exitcode = 0;
-		process_table[i]->sem = sem_create("sem", 0);
-
+		process_table[i]->wait_sem = sem_create("wait sem", 0);
 	}
 }
 
@@ -594,8 +592,82 @@ thread_make_runnable(struct thread *target, bool already_have_lock)
  * start on the same CPU as the caller, unless the scheduler
  * intervenes first.
  */
-pid_t
+int
 thread_fork(const char *name,
+	    void (*entrypoint)(void *data1, unsigned long data2),
+	    void *data1, unsigned long data2,
+	    struct thread **ret)
+{
+	struct thread *newthread;
+
+	newthread = thread_create(name);
+	if (newthread == NULL) {
+		return ENOMEM;
+	}
+
+	/* Allocate a stack */
+	newthread->t_stack = kmalloc(STACK_SIZE);
+	if (newthread->t_stack == NULL) {
+		thread_destroy(newthread);
+		return ENOMEM;
+	}
+	thread_checkstack_init(newthread);
+
+	/*
+	 * Now we clone various fields from the parent thread.
+	 */
+
+	/* Thread subsystem fields */
+	newthread->t_cpu = curthread->t_cpu;
+
+	/* VM fields */
+	/* do not clone address space -- let caller decide on that */
+
+	/* VFS fields */
+	if (curthread->t_cwd != NULL) {
+		VOP_INCREF(curthread->t_cwd);
+		newthread->t_cwd = curthread->t_cwd;
+	}
+	
+	/* PID */
+	pid_t pid = add_process_entry(newthread);
+	newthread->t_pid = pid;
+	process_table[pid]->ppid = curthread->t_pid;
+
+	/*
+	 * Because new threads come out holding the cpu runqueue lock
+	 * (see notes at bottom of thread_switch), we need to account
+	 * for the spllower() that will be done releasing it.
+	 */
+	newthread->t_iplhigh_count++;
+
+	/* Set up the switchframe so entrypoint() gets called */
+	switchframe_init(newthread, entrypoint, data1, data2);
+
+	/* Lock the current cpu's run queue and make the new thread runnable */
+	thread_make_runnable(newthread, false);
+
+	/*
+	 * Return new thread structure if it's wanted. Note that using
+	 * the thread structure from the parent thread should be done
+	 * only with caution, because in general the child thread
+	 * might exit at any time.
+	 */
+	if (ret != NULL) {
+		*ret = newthread;
+	}
+
+	return 0;
+}
+
+/* Temporary re-definition of thread_fork which instead returns
+ * a process ID. This is required until the fork() system call is 
+ * implemented, and also because C does not support function
+ * overriding AFAIK. So, to prevent code already using thread_fork()
+ * from breaking, a new variant thread_fork_pid is defined.
+ */
+int
+thread_fork_pid(const char *name,
 	    void (*entrypoint)(void *data1, unsigned long data2),
 	    void *data1, unsigned long data2,
 	    struct thread **ret)
