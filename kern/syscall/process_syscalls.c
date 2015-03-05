@@ -87,6 +87,27 @@ sys_getpid(void) {
 	return curthread->t_pid;
 }
 
+pid_t
+sys_fork(void) {
+	return -1;
+}
+
+int
+sys_execv(const_userptr_t program, char **args, int *errcode) {
+	int errcheck = 0;
+	char dest[PATH_MAX + 1];
+	size_t len = 0;
+	
+	//Copy file name from kernelspace to userspace
+	errcheck = copyinstr(program, dest, PATH_MAX, &len)
+	if(errcheck != 0) {
+		kprintf("Unable to copy string from userspace to kernelspace");
+		return 1;
+	}
+	
+	
+}
+
 void
 sys__exit(int code) {
 	//kprintf("kernel: pid #%d exiting...\n", sys_getpid());

@@ -66,6 +66,7 @@ int sys_waitpid(pid_t pid, userptr_t status, int options, int *errcode);
 pid_t sys_getpid(void);
 pid_t waitpid(pid_t pid, int *status, int options);
 void sys__exit(int code);
+pid_t sys_fork(void);
 
 /* Miscellaneous system calls */
 int sys_reboot(int code);
