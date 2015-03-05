@@ -62,26 +62,6 @@ sys_execv(const_userptr_t program, char **args, int *errcode) {
 	return 0;
 }
 
-int 
-sys_waitpid(pid_t pid, userptr_t status, int options, int *errcode) {
-	(void)pid;
-	(void)status;
-	(void)options;
-	(void)errcode;
-	
-	/* Error checking. */
-	if(pid < 0) {
-		(*errcode) = ESRCH;
-		return -1;
-	}
-	else if(pid == 0) {
-		(*errcode) = ECHILD;
-		return -1;
-	}
-	
-	return 0;
-}
-
 pid_t
 sys_getpid(void) {
 	return curthread->t_pid;
@@ -97,17 +77,30 @@ sys__exit(int code) {
 	
 	process_table[pid]->waiting = 0;
 	
+	V(process_table[pid]->sem);
+	
 	thread_exit();
 }
 
-pid_t
-waitpid(pid_t pid, int *status, int options) {
+pid_t 
+sys_waitpid(pid_t pid, userptr_t status, int options, int *errcode) {
 	/* Implement error checking stuff here.
 	 * Refer to man page and OS/161 blog
 	 * for more information. */
 	 
-	process_table[pid]->waiting += 1;
+	/* Error checking. */
+	if(pid < 0) {
+		(*errcode) = ESRCH;
+		return -1;
+	}
+	else if(pid == 0) {
+		(*errcode) = ECHILD;
+		return -1;
+	}
 	
+	process_table[pid]->waiting += 1;
+	P(process_table[pid]->sem);
+	process_table[pid]->waiting -= 1;
 	(void)status;
 	(void)options;
 	return pid;

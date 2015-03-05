@@ -139,15 +139,17 @@ common_prog(int nargs, char **args)
 		"synchronization-problems kernel.\n");
 #endif
 	
-	result = thread_fork(args[0] /* thread name */,
+	pid_t pid = thread_fork(args[0] /* thread name */,
 			cmd_progthread /* thread function */,
 			args /* thread arg */, nargs /* thread arg */,
 			NULL);
 			
-	int pid = curthread->t_pid;
-	waitpid(pid + 1, 0, 0);
+	userptr_t status;
+	int *errcode;
+	
+	sys_waitpid(pid, status, 0, errcode);
 			
-	if (result) {
+	if (result == -1) {
 		kprintf("thread_fork failed: %s\n", strerror(result));
 		return result;
 	}
@@ -692,14 +694,12 @@ void
 menu(char *args)
 {
 	char buf[64];
-	menu_lock = lock_create("menu lock");
 	menu_execute(args, 1);
 
 	while (1) {
-		//lock_acquire(menu_lock);
+
 			kprintf("OS/161 kernel [? for menu]: ");
 			kgets(buf, sizeof(buf));
-		//lock_release(menu_lock);
 		
 		menu_execute(buf, 0);
 	}
