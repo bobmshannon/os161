@@ -64,6 +64,7 @@ sys_execv(const_userptr_t program, char **args, int *errcode) {
 	(void)program;
 	(void)args;
 	int err = 0;
+	int argc = 0;
 	char dest[PATH_MAX + 1];
 	size_t len = 0;
 	
@@ -79,7 +80,7 @@ sys_execv(const_userptr_t program, char **args, int *errcode) {
 	size_t len = 0;
 	struct vnode *vn = 0;
 	
-	//Copy file name from kernelspace to userspace
+	//Copy file name from userspace to kernelspace
 	errcheck = copyinstr(program, dest, PATH_MAX, &len);
 	if(errcheck != 0) {
 		kprintf("copyinstr() failed.\n");
@@ -96,7 +97,35 @@ sys_execv(const_userptr_t program, char **args, int *errcode) {
 	if(errcheck) {
 		(*errcode) = ENOENT;
 		return -1;
-	}*/
+	}
+	
+	
+	char kernel_args[NAME_MAX];
+	char **kargs;
+	
+	//Kernel Buffer
+	kargs = (char **)kmalloc(sizeof(char))
+	
+	//Copy arguments from userspace to kernel buffer
+	if(args != 0){
+		while(args[argc] != 0){
+			if(argc >= ARG_MAX){
+				(*errcode) = E2BIG;
+				return -1;
+			}
+			
+			len = 0;
+			copyinstr((const_userptr_t)args[argc], kernel_args, NAME_MAX, &len);
+			kernel_args[len] = 0;
+			kargs[argc] = kernel_args;
+			
+			argc++;
+		}			
+	}
+	
+	
+	
+	*/
 	
 	return 0;
 }
