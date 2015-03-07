@@ -68,7 +68,7 @@ dup2_self(void)
 
 	/* use fd that isn't in use */
 	testfd = CLOSED_FD;
-
+	printf("test1\n");
 	rv = dup2(STDIN_FILENO, testfd);
 	if (rv == -1) {
 		warn("UH-OH: couldn't copy stdin");

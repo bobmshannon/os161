@@ -194,7 +194,7 @@ init_fd_table(void) {
 	curthread->t_fd_table[1]->vn = stdin;
 	curthread->t_fd_table[1]->lock = lock_create("stdout");
 	curthread->t_fd_table[1]->writable = true;
-	curthread->t_fd_table[1]->readable = false;
+	curthread->t_fd_table[1]->readable = true;
 
 	/* stderr */
 	curthread->t_fd_table[2] = kmalloc(sizeof(struct fd*));

@@ -47,21 +47,6 @@
 #include <kern/wait.h>
 #include <wchan.h>
 
-int 
-sys_execv(const_userptr_t program, char **args, int *errcode) {
-	(void)program;
-	(void)args;
-	(void)errcode;
-	
-	/* Error checking. */
-	if(program == NULL) {
-		(*errcode) = ENOENT;
-		return -1;
-	}
-	
-	return 0;
-}
-
 pid_t
 sys_getpid(void) {
 	return curthread->t_pid;
@@ -69,18 +54,33 @@ sys_getpid(void) {
 
 pid_t
 sys_fork(void) {
-	return -1;
+	return 0;
 }
 
 int
 sys_execv(const_userptr_t program, char **args, int *errcode) {
+
+	(void)errcode;
+	(void)program;
+	(void)args;
+	int err = 0;
+	char dest[PATH_MAX + 1];
+	size_t len = 0;
+	
+	err = copyinstr(program, dest, PATH_MAX, &len);
+	if(err != 0) {
+		(*errcode) = EFAULT;
+		return -1;
+	}
+	
+	/*
 	int errcheck = 0;
 	char dest[PATH_MAX + 1];
 	size_t len = 0;
-	struct vnode *vn = 0
+	struct vnode *vn = 0;
 	
 	//Copy file name from kernelspace to userspace
-	errcheck = copyinstr(program, dest, PATH_MAX, &len)
+	errcheck = copyinstr(program, dest, PATH_MAX, &len);
 	if(errcheck != 0) {
 		kprintf("copyinstr() failed.\n");
 		return -1;
@@ -96,8 +96,9 @@ sys_execv(const_userptr_t program, char **args, int *errcode) {
 	if(errcheck) {
 		(*errcode) = ENOENT;
 		return -1;
-	}
+	}*/
 	
+	return 0;
 }
 
 void
@@ -121,12 +122,8 @@ sys_waitpid(pid_t pid, userptr_t status, int options, int *errcode) {
 	// TODO: handle options argument checking.
 	
 	/* Error checking. */
-	if(pid < 0) {
+	if(pid < 0 || pid == 0 || pid > RUNNING_MAX) {
 		(*errcode) = ESRCH;
-		return -1;
-	}
-	else if(pid == 0) {
-		(*errcode) = ECHILD;
 		return -1;
 	}
 	
