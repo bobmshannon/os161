@@ -71,7 +71,7 @@
 #define __PIPE_BUF      512
 
 /* Max number of running processes. */
-#define __RUNNING_MAX	512
+#define __RUNNING_MAX	2048
 
 /*
  * Not so important parts of the API.

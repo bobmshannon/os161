@@ -49,20 +49,32 @@
 
 #include <unistd.h>
 #include <err.h>
+#include <stdio.h>
 
 static volatile int pid;
 
 int
 main()
 {
-	int i;
 
+		int pid = fork();
+		
+		if(pid == 0) {
+			printf("I am a child with PID %d\n", getpid());
+			
+		}
+		if(pid > 0) {
+			waitpid(pid, 0, 0);
+			printf("I am a parent with PID %d \n", getpid());
+		}
+
+	/*
 	while (1) {
 		fork();
 
 		pid = getpid();
 
-		/* Make sure each fork has its own address space. */
+		// Make sure each fork has its own address space. 
 		for (i=0; i<300; i++) {
 			volatile int seenpid;
 			seenpid = pid;
@@ -73,4 +85,5 @@ main()
 			}
 		}
 	}
+	*/
 }

@@ -143,16 +143,18 @@ test(int nowait)
 
 	pid0 = dofork();
 	putchar('0');
-	check();
+	//check();
 	pid1 = dofork();
 	putchar('1');
-	check();
+	//check();
 	pid2 = dofork();
 	putchar('2');
-	check();
+	//check();
 	pid3 = dofork();
 	putchar('3');
-	check();
+	//check();
+	
+	(void)check;
 
 	/*
 	 * These must be called in reverse order to avoid waiting
