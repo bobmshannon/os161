@@ -66,6 +66,9 @@ typedef enum {
 	S_ZOMBIE,	/* zombie; exited but not yet deleted */
 } threadstate_t;
 
+/* System-wide process/thread table. */
+struct process* process_table[RUNNING_MAX];
+
 /* Thread structure. */
 struct thread {
 	/*
@@ -85,6 +88,7 @@ struct thread {
 	struct switchframe *t_context;	/* Saved register context (on stack) */
 	struct cpu *t_cpu;		/* CPU thread runs on */
 	struct fd* t_fd_table[OPEN_MAX];
+	pid_t t_pid;
 
 	/*
 	 * Interrupt state fields.

@@ -69,7 +69,7 @@ sys_open(const_userptr_t path, int flags, int mode, int *errcode) {
 	
 	/* More error checking */
 	if(strlen(pathname) == 0) {
-		(*errcode) = ENODEV;
+		(*errcode) = EINVAL;
 		return -1;
 	}
 	
@@ -200,7 +200,7 @@ sys_write(int fd, const_userptr_t buf, size_t nbytes, int *errcode) {
 	}
 	
 	/* Error checking */
-	if((fd < 0) || (curthread->t_fd_table[fd]->vn == NULL) || (fd >= OPEN_MAX)) {
+	if((fd < 0) || fd >= OPEN_MAX || (curthread->t_fd_table[fd]->vn == NULL) || (fd >= OPEN_MAX)) {
 		(*errcode) = EBADF;
 		return -1;
 	}
@@ -228,7 +228,7 @@ sys_write(int fd, const_userptr_t buf, size_t nbytes, int *errcode) {
 int
 sys_close(int fd, int *errcode) {
 	/* Error checking */
-	if((fd < 0) || (curthread->t_fd_table[fd]->vn == NULL) || (fd >= OPEN_MAX)) {
+	if((fd < 0) || fd >= OPEN_MAX || (curthread->t_fd_table[fd]->vn == NULL) || (fd >= OPEN_MAX)) {
 		(*errcode) = EBADF;
 		return -1;
 	}
@@ -237,12 +237,9 @@ sys_close(int fd, int *errcode) {
 		curthread->t_fd_table[fd]->ref_count -= 1;
 	lock_release(curthread->t_fd_table[fd]->lock);
 	
-	/* Close vnode and free memory */
+	/* Re-open a slot in the file descriptor table */
 	if(curthread->t_fd_table[fd]->ref_count == 0) {
-		//lock_destroy(curthread->t_fd_table[fd]->lock);
 		curthread->t_fd_table[fd]->vn = NULL;
-		//kfree(curthread->t_fd_table[fd]->vn);
-		//kfree(curthread->t_fd_table[fd]);	
 	}
 	return 0;
 }
@@ -250,24 +247,38 @@ sys_close(int fd, int *errcode) {
 int
 sys_dup2(int oldfd, int newfd, int *errcode) {
 	/* Error Checking */
-	if((oldfd < 0) || (curthread->t_fd_table[oldfd]->vn == NULL) || (oldfd >= OPEN_MAX)) {
-		(*errcode) = EBADF;
-		return -1;
+	if(oldfd == newfd) {
+		return newfd; 
 	}
 
-	if((newfd < 0) || (newfd >= OPEN_MAX)){
-		(*errcode) = EBADF;
+	if((oldfd != newfd) && ((oldfd < 0) || (oldfd >= OPEN_MAX) || newfd < 0 || (newfd >= OPEN_MAX)) ) {
+ 		(*errcode) = EBADF;
 		return -1;
+ 	}
+	
+	else if(oldfd == 0 && curthread->t_fd_table[newfd]->vn == NULL) {
+		
 	}
 
+	else if((oldfd < 0) || (oldfd >= OPEN_MAX) || newfd < 0 || (newfd >= OPEN_MAX) || curthread->t_fd_table[newfd]->vn == NULL) {
+ 		(*errcode) = EBADF;
+ 		return -1;
+ 	}
+	
 	/* Close newfd if open */
 	if(curthread->t_fd_table[newfd]->vn != NULL){
 			sys_close(newfd, errcode);
 	}
 
-	curthread->t_fd_table[newfd] = curthread->t_fd_table[oldfd];
+	curthread->t_fd_table[newfd]->vn = curthread->t_fd_table[oldfd]->vn;
+	curthread->t_fd_table[newfd]->lock = curthread->t_fd_table[oldfd]->lock;
+	curthread->t_fd_table[newfd]->writable = curthread->t_fd_table[oldfd]->writable;
+	curthread->t_fd_table[newfd]->readable = curthread->t_fd_table[oldfd]->readable;
+	curthread->t_fd_table[newfd]->flags = curthread->t_fd_table[oldfd]->flags;
+	curthread->t_fd_table[newfd]->ref_count = curthread->t_fd_table[oldfd]->ref_count;
+	curthread->t_fd_table[newfd]->offset = curthread->t_fd_table[oldfd]->offset;
 
-	return 0;	
+	return newfd;	
 }
 
 
@@ -334,9 +345,20 @@ sys_lseek(int fd, off_t pos, int whence, int *errcode) {
 	struct stat filestats;
 	
 	/* Error Checking */
-	if((fd < 0) || (curthread->t_fd_table[fd]->vn == NULL) || (fd >= OPEN_MAX)) {
+	if((fd < 0) || fd >= OPEN_MAX || (curthread->t_fd_table[fd]->vn == NULL) || (fd >= OPEN_MAX)) {
 		(*errcode) = EBADF;
 		return -1;
+	}
+	
+	err = VOP_STAT(curthread->t_fd_table[fd]->vn, &filestats);
+	if(err) {
+		(*errcode) = err;
+		return -1;
+	}
+	
+	/* lseek is unsupported on devices. */
+	if(filestats.st_rdev > 0 && filestats.st_size == 0) {
+		(*errcode) = ESPIPE;
 	}
 	
 	/* Update seek position */
@@ -366,6 +388,7 @@ sys_lseek(int fd, off_t pos, int whence, int *errcode) {
 	}
 	lock_release(curthread->t_fd_table[fd]->lock);
 	
+	/* Out of bounds. This is an illegal seek position. That's awkward. */
 	if(newpos < 0) {
 		(*errcode) = EINVAL;
 		return -1;

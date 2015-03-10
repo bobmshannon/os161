@@ -43,35 +43,28 @@
 #include <stat.h>
 #include <kern/seek.h>
 
-/* 
-OS/161 kernel [? for menu]: p /testbin/badcall_b
-Unknownp syscall 0
-Unknown syscall 2
-(program name unknown): FAILURE: exec NULL: Operation succeeded
-Unknown syscall 3
- /testbin/badcall_b
-Operation took 0.000187280 seconds
-Unknown syscall 4
-(program name unknoOwSn/): FAILURE: wait for pid -8: Operati1o6n1  skuecrcneeeld e[d
-? for menu]: Unknown syscall 4
-(program name unknown): FAILURE: wait for pid -1: Operation succeeded
-Unknown syscall 4
-(program name unknown): FAILURE: pid zero: Operation succeeded
-Unknown syscall 4
-(program name unknown): FAILURE: nonexistent pid: Operation succeeded
-Unknown syscall 0
-Unknown syscall 3
-*/
-
 int 
 sys_execv(const_userptr_t program, char **args, int *errcode) {
 	(void)program;
 	(void)args;
 	(void)errcode;
 	
+	(void)errcode;
+	(void)program;
+	(void)args;
+	int err = 0;
+	char dest[PATH_MAX + 1];
+	size_t len = 0;
+
 	/* Error checking. */
 	if(program == NULL) {
 		(*errcode) = ENOENT;
+		return -1;
+	}
+	
+	err = copyinstr(program, dest, PATH_MAX, &len);
+	if(err != 0) {
+		(*errcode) = EFAULT;
 		return -1;
 	}
 	
@@ -95,6 +88,16 @@ sys_waitpid(pid_t pid, userptr_t status, int options, int *errcode) {
 		return -1;
 	}
 	
+	return 0;
+}
+
+pid_t
+sys_getpid() {
+	return 0;
+}
+
+pid_t
+sys_fork(void) {
 	return 0;
 }
 
