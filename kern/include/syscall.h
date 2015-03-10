@@ -58,14 +58,15 @@ int sys_write(int fd, const_userptr_t buf, size_t nbytes, int *errcode);
 off_t sys_lseek(int fd, off_t pos, int whence, int *errcode);
 int sys_dup2(int oldfs, int newfd, int *errcode);
 int sys_chdir(const_userptr_t path, int *errcode);
-int sys__getcwd(userptr_t buf, size_t buflen, int *errcode);
+int sys__getcwd(userptr_t buf, size_t buflen, int *errcode); 
 
 /* Process related system calls */
 int sys_execv(const_userptr_t program, char **args, int *errcode);
 pid_t sys_getpid(void);
 pid_t sys_waitpid(pid_t pid, userptr_t status, int options, int *errcode);
 void sys__exit(int code);
-pid_t sys_fork(void);
+pid_t sys_fork(struct trapframe *tf);
+void enter_forked_process(struct trapframe *tf);
 
 /* Miscellaneous system calls */
 int sys_reboot(int code);

@@ -52,11 +52,6 @@ sys_getpid(void) {
 	return curthread->t_pid;
 }
 
-pid_t
-sys_fork(void) {
-	return 0;
-}
-
 int
 sys_execv(const_userptr_t program, char **args, int *errcode) {
 
@@ -73,6 +68,7 @@ sys_execv(const_userptr_t program, char **args, int *errcode) {
 		(*errcode) = EFAULT;
 		return -1;
 	}
+	(void)argc;
 	
 	/*
 	int errcheck = 0;
@@ -122,9 +118,6 @@ sys_execv(const_userptr_t program, char **args, int *errcode) {
 			argc++;
 		}			
 	}
-	
-	
-	
 	*/
 	
 	return 0;
@@ -161,4 +154,16 @@ sys_waitpid(pid_t pid, userptr_t status, int options, int *errcode) {
 	(void)status;
 	(void)options;
 	return pid;
+}
+
+pid_t
+sys_fork(struct trapframe *tf) {
+	(void)tf;
+
+	return 0;
+}
+
+void 
+enter_forked_process(struct trapframe *tf) {
+	(void)tf;
 }
