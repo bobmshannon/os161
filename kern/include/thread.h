@@ -123,6 +123,15 @@ struct thread {
 /* Initialize file descriptor table */
 void init_fd_table(void);
 
+/* Initialize process table */
+void init_process_table(void);
+
+/* Add a process to process table */
+pid_t add_process_entry(struct thread *entry);
+
+/* Remove a process from process table */
+int remove_process_entry(pid_t pid);
+
 /* Call once during system startup to allocate data structures. */
 void thread_bootstrap(void);
 
@@ -145,6 +154,11 @@ void thread_shutdown(void);
  * child thread might exit at any time.) Returns an error code.
  */
 int thread_fork(const char *name, 
+                void (*func)(void *, unsigned long),
+                void *data1, unsigned long data2, 
+                struct thread **ret);
+				
+pid_t thread_fork_pid(const char *name, 
                 void (*func)(void *, unsigned long),
                 void *data1, unsigned long data2, 
                 struct thread **ret);

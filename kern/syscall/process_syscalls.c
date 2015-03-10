@@ -42,6 +42,9 @@
 #include <kern/errno.h>
 #include <stat.h>
 #include <kern/seek.h>
+#include <thread.h>
+#include <process.h>
+#include <kern/wait.h>
 
 int 
 sys_execv(const_userptr_t program, char **args, int *errcode) {
@@ -79,25 +82,39 @@ sys_waitpid(pid_t pid, userptr_t status, int options, int *errcode) {
 	(void)errcode;
 	
 	/* Error checking. */
-	if(pid < 0) {
+	if(pid < 0 || pid >= OPEN_MAX) {
 		(*errcode) = ESRCH;
 		return -1;
 	}
 	else if(pid == 0) {
-		(*errcode) = ECHILD;
+		(*errcode) = EINVAL;
 		return -1;
 	}
 	
-	return 0;
+	P(process_table[pid]->wait_sem);
+	
+	return pid;
 }
 
 pid_t
 sys_getpid() {
-	return 0;
+	return curthread->t_pid;
 }
 
 pid_t
 sys_fork(void) {
 	return 0;
+}
+	
+void
+sys__exit(int code) {
+	//kprintf("kernel: pid #%d exiting...\n", sys_getpid());
+	pid_t pid = sys_getpid();
+	process_table[pid]->has_exited = true;
+	process_table[pid]->exitcode = code;
+	
+	V(process_table[pid]->wait_sem);
+	
+	thread_exit();
 }
 

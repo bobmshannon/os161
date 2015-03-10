@@ -65,6 +65,7 @@ int sys_execv(const_userptr_t program, char **args, int *errcode);
 int sys_waitpid(pid_t pid, userptr_t status, int options, int *errcode);
 pid_t sys_fork(void);
 pid_t sys_getpid(void);
+void sys__exit(int code);
 
 /* Miscellaneous system calls */
 int sys_reboot(int code);

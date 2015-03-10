@@ -41,6 +41,9 @@
 #include <sfs.h>
 #include <syscall.h>
 #include <test.h>
+#include <wchan.h>
+#include <current.h>
+#include <process.h>
 #include "opt-synchprobs.h"
 #include "opt-sfs.h"
 #include "opt-net.h"
@@ -130,21 +133,20 @@ int
 common_prog(int nargs, char **args)
 {
 	int result;
-
+	(void)result;
 #if OPT_SYNCHPROBS
 	kprintf("Warning: this probably won't work with a "
 		"synchronization-problems kernel.\n");
 #endif
 	
-	result = thread_fork(args[0] /* thread name */,
+
+	pid_t pid = thread_fork_pid(args[0] /* thread name */,
 			cmd_progthread /* thread function */,
 			args /* thread arg */, nargs /* thread arg */,
 			NULL);
-			
-	if (result) {
-		kprintf("thread_fork failed: %s\n", strerror(result));
-		return result;
-	}
+	
+
+	sys_waitpid(pid, (userptr_t)0, 0, (int *)0);
 	
 	/* This is a really ugly (although temporary) hack to prevent 
 	 * the kernel menu and /testbin/fileonlytest from competing for stdout. 
@@ -152,7 +154,7 @@ common_prog(int nargs, char **args)
 	 * waitpid() and exit() system calls are implemented.
 	 */ 
 	if(strlen(args[0]) == 21) {
-		clocksleep(5); 
+		//clocksleep(5); 
 	}
 
 	return 0;
