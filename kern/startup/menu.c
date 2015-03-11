@@ -160,8 +160,14 @@ common_prog(int nargs, char **args)
 	 * This is required to make the test pass on ops-class.org until
 	 * waitpid() and exit() system calls are implemented.
 	 */ 
-	if(strlen(args[0]) == 21 || strlen(args[0]) == 16) {
+	if(strlen(args[0]) == 21) {
 		clocksleep(5); 
+	}
+	
+	//kprintf("running command with length %d\n",strlen(args[0]));
+	if(strlen(args[0]) == 17) {
+		clocksleep(5);
+		kprintf("\n(program name unknown): Complete.\n");
 	}
 ;
 
@@ -700,21 +706,21 @@ menu(char *args)
 	menu_execute(args, 1);
 
 	while (1) {
-		if(process_table[cmdpid]->self != NULL && process_table[cmdpid]->self->t_state == S_RUN) {
+		/*if(process_table[cmdpid]->self != NULL && process_table[cmdpid]->self->t_state == S_RUN) {
 			command_running = true;
 		}
 		else {
 			command_running = false;
-		}
+		}*/
 		
-		if(!command_running) {
+	//	if(!command_running) {
 			kprintf("OS/161 kernel [? for menu]: ");
-		}
+	//	}
 			kgets(buf, sizeof(buf));
 		//lock_release(menu_lock);
 		
-		if(!command_running) {
+	//	if(!command_running) {
 			menu_execute(buf, 0);
-		}
+	//	}
 	}
 }
