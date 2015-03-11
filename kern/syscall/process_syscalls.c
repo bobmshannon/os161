@@ -80,6 +80,8 @@ sys_waitpid(pid_t pid, userptr_t status, int options, int *errcode) {
 	(void)status;
 	(void)options;
 	(void)errcode;
+	int err;
+	(void)err;
 	
 	/* Error checking. */
 	if(pid < 0 || pid >= OPEN_MAX) {
@@ -92,6 +94,37 @@ sys_waitpid(pid_t pid, userptr_t status, int options, int *errcode) {
 	}
 	
 	P(process_table[pid]->wait_sem);
+	
+	/* Send exit code back to waitpid caller. */
+	int *exitcode;
+	*exitcode = process_table[pid]->exitcode;
+	(void)exitcode;
+	
+	err = copyout(exitcode, status, sizeof(int));
+	if(err) {
+		(*errcode) = EFAULT;
+		return -1;
+	}
+	// Free up slot in process table.
+	remove_process_entry(pid);
+	
+	return pid;
+}
+
+int 
+menu_wait(pid_t pid) {
+	/* Error checking. */
+	if(pid < 0 || pid >= OPEN_MAX) {
+		return -1;
+	}
+	else if(pid == 0) {
+		return -1;
+	}
+	
+	P(process_table[pid]->wait_sem);
+	
+	// Free up slot in process table.
+	remove_process_entry(pid);
 	
 	return pid;
 }

@@ -134,19 +134,23 @@ common_prog(int nargs, char **args)
 {
 	int result;
 	(void)result;
+	pid_t pid;
 #if OPT_SYNCHPROBS
 	kprintf("Warning: this probably won't work with a "
 		"synchronization-problems kernel.\n");
 #endif
 	
 
-	pid_t pid = thread_fork_pid(args[0] /* thread name */,
-			cmd_progthread /* thread function */,
-			args /* thread arg */, nargs /* thread arg */,
+		pid = thread_fork_pid(args[0],
+			cmd_progthread,
+			args, nargs,
 			NULL);
-	
 
-	sys_waitpid(pid, (userptr_t)0, 0, (int *)0);
+	(void)pid;
+	//int *exitcode;
+	//sys_waitpid(pid, (userptr_t)exitcode, 0, 0);
+	
+	//menu_wait(pid);
 	
 	/* This is a really ugly (although temporary) hack to prevent 
 	 * the kernel menu and /testbin/fileonlytest from competing for stdout. 
@@ -154,8 +158,9 @@ common_prog(int nargs, char **args)
 	 * waitpid() and exit() system calls are implemented.
 	 */ 
 	if(strlen(args[0]) == 21) {
-		//clocksleep(5); 
+		clocksleep(5); 
 	}
+;
 
 	return 0;
 }
