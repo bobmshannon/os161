@@ -45,6 +45,8 @@
 #include <thread.h>
 #include <process.h>
 #include <kern/wait.h>
+#include <mips/trapframe.h>
+#include <addrspace.h>
 
 int 
 sys_execv(const_userptr_t program, char **args, int *errcode) {
@@ -111,6 +113,18 @@ sys_waitpid(pid_t pid, userptr_t status, int options, int *errcode) {
 	return pid;
 }
 
+void
+sys__exit(int code) {
+	//kprintf("kernel: pid #%d exiting...\n", sys_getpid());
+	pid_t pid = sys_getpid();
+	process_table[pid]->has_exited = true;
+	process_table[pid]->exitcode = code;
+	
+	V(process_table[pid]->wait_sem);
+	
+	thread_exit();
+}
+
 int 
 menu_wait(pid_t pid) {
 	/* Error checking. */
@@ -135,19 +149,67 @@ sys_getpid() {
 }
 
 pid_t
-sys_fork(void) {
-	return 0;
+sys_fork(struct trapframe *tf) {
+	struct thread **ret;		// (*newthread) is a pointer to the child.
+	struct addrspace **retaddr; // (*retaddr) is a pointer to address space copy.
+	
+	struct thread *newthread;
+	struct trapframe *tf_child;
+	
+	int i, dummy, err;
+	
+	/* Copy trapframe */
+	tf_child = kmalloc(sizeof(struct trapframe));
+	memcpy(tf_child, tf, sizeof(struct trapframe));
+	
+	/* Call thread_fork */
+	err = thread_fork("forked pid", (void *)enter_forked_process, tf_child, dummy, ret);
+	if(err) {
+		panic("thread_fork failed.");
+	}
+	newthread = *ret;
+	
+	/* Copy parents address space 
+	retaddr = kmalloc(sizeof(struct addrspace));
+	err = as_copy(curthread->t_addrspace, retaddr);
+	if(err) {
+		panic("as_copy failed.");
+	}
+	newthread->t_addrspace = *retaddr;
+	*/
+	
+	/* Copy file table from parent to child. 
+	for(i = 0; i < OPEN_MAX; i++) {
+		newthread->t_fd_table[i] = kmalloc(sizeof(struct fd));
+		newthread->t_fd_table[i]->readable = curthread->t_fd_table[i]->readable;
+		newthread->t_fd_table[i]->writable = curthread->t_fd_table[i]->writable;
+		newthread->t_fd_table[i]->flags = curthread->t_fd_table[i]->flags;
+		newthread->t_fd_table[i]->offset = curthread->t_fd_table[i]->offset;
+		newthread->t_fd_table[i]->ref_count = curthread->t_fd_table[i]->ref_count;
+		newthread->t_fd_table[i]->vn = curthread->t_fd_table[i]->vn;
+		newthread->t_fd_table[i]->lock = curthread->t_fd_table[i]->lock;
+		//newthread->t_fd_table[i]->lock = lock_create("lock");
+	}*/
+	
+	(void)i;
+	(void)retaddr;
+	return newthread->t_pid;
 }
+
+void 
+enter_forked_process(struct trapframe *tf_child) {
+	//kprintf("kernel: entering forked process...\n");
+	struct trapframe tf;
 	
-void
-sys__exit(int code) {
-	//kprintf("kernel: pid #%d exiting...\n", sys_getpid());
-	pid_t pid = sys_getpid();
-	process_table[pid]->has_exited = true;
-	process_table[pid]->exitcode = code;
+	tf_child->tf_v0 = 0;
+	tf_child->tf_a0 = 0;
+	tf_child->tf_epc += 4;
 	
-	V(process_table[pid]->wait_sem);
+	as_activate(curthread->t_addrspace);
 	
-	thread_exit();
+	tf = *tf_child;
+	
+	mips_usermode(&tf);
+
 }
 

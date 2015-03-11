@@ -625,9 +625,33 @@ thread_fork(const char *name,
 	/* Thread subsystem fields */
 	newthread->t_cpu = curthread->t_cpu;
 
-	/* VM fields */
-	/* do not clone address space -- let caller decide on that */
+	/* Copy file table from parent to child. */ 
+	int i;
+	for(i = 0; i < OPEN_MAX; i++) {
+		newthread->t_fd_table[i] = kmalloc(sizeof(struct fd));
+		newthread->t_fd_table[i]->readable = curthread->t_fd_table[i]->readable;
+		newthread->t_fd_table[i]->writable = curthread->t_fd_table[i]->writable;
+		newthread->t_fd_table[i]->flags = curthread->t_fd_table[i]->flags;
+		newthread->t_fd_table[i]->offset = curthread->t_fd_table[i]->offset;
+		newthread->t_fd_table[i]->ref_count = curthread->t_fd_table[i]->ref_count;
+		newthread->t_fd_table[i]->vn = curthread->t_fd_table[i]->vn;
+		newthread->t_fd_table[i]->lock = curthread->t_fd_table[i]->lock;
+		//newthread->t_fd_table[i]->lock = lock_create("lock");
+	}
 
+	/* Copy parents address space */
+	struct addrspace **retaddr;
+	int err;
+	retaddr = kmalloc(sizeof(struct addrspace));
+	if(curthread->t_addrspace == NULL) {
+		panic("parent address space null.");
+	}
+	err = as_copy(curthread->t_addrspace, retaddr);
+	if(err) {
+		panic("as_copy failed.");
+	}
+	newthread->t_addrspace = *retaddr;
+	
 	/* VFS fields */
 	if (curthread->t_cwd != NULL) {
 		VOP_INCREF(curthread->t_cwd);

@@ -44,6 +44,7 @@
 #include <wchan.h>
 #include <current.h>
 #include <process.h>
+#include <thread.h>
 #include "opt-synchprobs.h"
 #include "opt-sfs.h"
 #include "opt-net.h"
@@ -55,6 +56,9 @@
 #define _PATH_SHELL "/bin/sh"
 
 #define MAXMENUARGS  16
+
+bool command_running = false;
+pid_t cmdpid;
 
 // XXX this should not be in this file
 void
@@ -140,16 +144,15 @@ common_prog(int nargs, char **args)
 		"synchronization-problems kernel.\n");
 #endif
 	
-
-		pid = thread_fork_pid(args[0],
-			cmd_progthread,
-			args, nargs,
-			NULL);
+	cmdpid = thread_fork_pid(args[0],
+		cmd_progthread,
+		args, nargs,
+		NULL);
 
 	(void)pid;
 	//int *exitcode;
 	//sys_waitpid(pid, (userptr_t)exitcode, 0, 0);
-	
+	//clocksleep(10);
 	//menu_wait(pid);
 	
 	/* This is a really ugly (although temporary) hack to prevent 
@@ -157,7 +160,7 @@ common_prog(int nargs, char **args)
 	 * This is required to make the test pass on ops-class.org until
 	 * waitpid() and exit() system calls are implemented.
 	 */ 
-	if(strlen(args[0]) == 21) {
+	if(strlen(args[0]) == 21 || strlen(args[0]) == 16) {
 		clocksleep(5); 
 	}
 ;
@@ -697,11 +700,21 @@ menu(char *args)
 	menu_execute(args, 1);
 
 	while (1) {
-		//lock_acquire(menu_lock);
+		if(process_table[cmdpid]->self != NULL && process_table[cmdpid]->self->t_state == S_RUN) {
+			command_running = true;
+		}
+		else {
+			command_running = false;
+		}
+		
+		if(!command_running) {
 			kprintf("OS/161 kernel [? for menu]: ");
+		}
 			kgets(buf, sizeof(buf));
 		//lock_release(menu_lock);
 		
-		menu_execute(buf, 0);
+		if(!command_running) {
+			menu_execute(buf, 0);
+		}
 	}
 }

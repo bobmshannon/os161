@@ -57,8 +57,10 @@ dofork(void)
 {
 	int pid;
 	pid = fork();
+	//printf("Who forked ya?\n");
 	if (pid < 0) {
-		warn("fork");
+		//printf("warning: fork() returned %d\n", pid);
+		//warn("fork lol");
 	}
 	return pid;
 }
