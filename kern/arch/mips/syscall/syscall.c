@@ -103,7 +103,9 @@ syscall(struct trapframe *tf)
 						// To be mopped up later.
 	retval = 0;
 	errcode = kmalloc(sizeof(int));
-	(*errcode) = 0;
+	*errcode = 0;
+	
+	//int errno;
 	
 	switch (callno) {
 	    case SYS_reboot:
@@ -151,7 +153,7 @@ syscall(struct trapframe *tf)
 		case SYS_fork:
 			retval = sys_fork(tf);
 			retval = 0;
-			*errcode = 0;
+			//err = 0;
 			break;
 		case SYS_getpid:
 			retval = sys_getpid();
@@ -187,6 +189,8 @@ syscall(struct trapframe *tf)
 		tf->tf_v0 = retval;
 		tf->tf_a3 = 0;      /* signal no error */
 	}
+	
+	kfree(errcode);
 	
 	/*
 	 * Now, advance the program counter, to avoid restarting

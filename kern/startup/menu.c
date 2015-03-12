@@ -116,6 +116,8 @@ cmd_progthread(void *ptr, unsigned long nargs)
 			strerror(result));
 		return;
 	}
+	
+	sys__exit(0);
 
 	/* NOTREACHED: runprogram only returns on error. */
 }
@@ -144,10 +146,23 @@ common_prog(int nargs, char **args)
 		"synchronization-problems kernel.\n");
 #endif
 	
+	
 	cmdpid = thread_fork_pid(args[0],
 		cmd_progthread,
 		args, nargs,
 		NULL);
+		
+	DEBUG(DB_KERN_MENU, "\nkernel: menu with pid #%d is running a command with forked pid #%d\n", curthread->t_pid, cmdpid);
+	DEBUG(DB_KERN_MENU, "\nkernel: menu waiting for forked pid #%d\n", cmdpid);
+
+	int *exitcode;
+	exitcode = kmalloc(sizeof(int));
+	
+	*exitcode = 0;
+	//sys_waitpid(cmdpid, 0, 0, exitcode);
+	
+	DEBUG(DB_KERN_MENU, "\nkernel: forked pid #%d has exited, menu is now awake\n", cmdpid);
+		
 
 	(void)pid;
 	//int *exitcode;
@@ -166,8 +181,8 @@ common_prog(int nargs, char **args)
 	
 	//kprintf("running command with length %d\n",strlen(args[0]));
 	if(strlen(args[0]) == 17) {
-		clocksleep(5);
-		kprintf("\n(program name unknown): Complete.\n");
+		//clocksleep(5);
+		//kprintf("\n(program name unknown): Complete.\n");
 	}
 ;
 
@@ -635,8 +650,9 @@ cmd_dispatch(char *cmd)
 			getinterval(beforesecs, beforensecs,
 				    aftersecs, afternsecs,
 				    &secs, &nsecs);
-
-			kprintf("Operation took %lu.%09lu seconds\n",
+		
+			clocksleep(5);
+			kprintf("\nOperation took %lu.%09lu seconds\n",
 				(unsigned long) secs,
 				(unsigned long) nsecs);
 

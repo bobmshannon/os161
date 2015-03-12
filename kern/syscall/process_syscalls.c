@@ -95,10 +95,13 @@ sys_waitpid(pid_t pid, userptr_t status, int options, int *errcode) {
 		return -1;
 	}
 	
+	DEBUG(DB_PROCESS_SYSCALL, "\nprocess #%d waiting for pid #%d", curthread->t_pid, pid);
+	
 	P(process_table[pid]->wait_sem);
 	
 	/* Send exit code back to waitpid caller. */
 	int *exitcode;
+	exitcode = kmalloc(sizeof(int));
 	*exitcode = process_table[pid]->exitcode;
 	(void)exitcode;
 	
@@ -107,6 +110,9 @@ sys_waitpid(pid_t pid, userptr_t status, int options, int *errcode) {
 		(*errcode) = EFAULT;
 		return -1;
 	}
+	
+	DEBUG(DB_PROCESS_SYSCALL, "\nprocess #%d no longer waiting for pid #%d", curthread->t_pid, pid);
+	
 	// Free up slot in process table.
 	remove_process_entry(pid);
 	
@@ -115,7 +121,7 @@ sys_waitpid(pid_t pid, userptr_t status, int options, int *errcode) {
 
 void
 sys__exit(int code) {
-	//kprintf("kernel: pid #%d exiting...\n", sys_getpid());
+	DEBUG(DB_PROCESS_SYSCALL, "\nkernel: pid #%d exiting...\n", sys_getpid());
 	pid_t pid = sys_getpid();
 	process_table[pid]->has_exited = true;
 	process_table[pid]->exitcode = code;
@@ -191,6 +197,8 @@ sys_fork(struct trapframe *tf) {
 		//newthread->t_fd_table[i]->lock = lock_create("lock");
 	}*/
 	
+	DEBUG(DB_PROCESS_SYSCALL, "\nprocess #%d calling fork(), new thread spawned with pid #%d\n", curthread->t_pid, newthread->t_pid);
+	
 	(void)i;
 	(void)retaddr;
 	return newthread->t_pid;
@@ -198,7 +206,6 @@ sys_fork(struct trapframe *tf) {
 
 void 
 enter_forked_process(struct trapframe *tf_child) {
-	//kprintf("kernel: entering forked process...\n");
 	struct trapframe tf;
 	
 	tf_child->tf_v0 = 0;
@@ -208,6 +215,8 @@ enter_forked_process(struct trapframe *tf_child) {
 	as_activate(curthread->t_addrspace);
 	
 	tf = *tf_child;
+	
+	DEBUG(DB_PROCESS_SYSCALL, "\nprocess #%d entering user mode\n", curthread->t_pid);
 	
 	mips_usermode(&tf);
 

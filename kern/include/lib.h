@@ -88,7 +88,8 @@
 #define DB_NET         0x200
 #define DB_NETFS       0x400
 #define DB_KMALLOC     0x800
-
+#define DB_PROCESS_SYSCALL     0x1000
+#define DB_KERN_MENU     0x2000
 extern uint32_t dbflags;
 
 /*
