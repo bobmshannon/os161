@@ -83,7 +83,6 @@ main(int argc, char **argv)
 			writebuf[j] = i * 2 * j;
 		}
 		len = write(fh, writebuf, sizeof(writebuf));
-		printf("\n len: %d | writebuf size: %d\n", len, sizeof(writebuf));
 		if (len != sizeof(writebuf)) {
 			err(1, "write failed");
 		}
@@ -91,9 +90,7 @@ main(int argc, char **argv)
     // 23 Mar 2012 : GWA : Use lseek() to skip the odd guys.
 	
     target = (i + 1) * 2 * sizeof(writebuf);
-	
     pos = lseek(fh, sizeof(writebuf), SEEK_END);
-	printf("\n fd: %d | target: %llu | offset: %llu | i: %d \n", fh, target, pos, i);
     if (pos != target) {
       err(1, "(even) lseek failed: %llu != %llu", pos, target);
     }
@@ -131,8 +128,7 @@ main(int argc, char **argv)
 	// ended up where we wrote it. Tests read() and lseek(SEEK_SET).
 	
 	printf("Verifying write.\n");
-	(void)readbuf;
-	
+
 	for (i = BUFFER_COUNT - 1; i >= 0; i--) {
     target = i * sizeof(writebuf);
 		pos = lseek(fh, target, SEEK_SET);
@@ -148,7 +144,7 @@ main(int argc, char **argv)
 				err(1, "read mismatch: pos=%llu, readbuf[j]=%d, i*j=%d, i=%d, j=%d", pos, readbuf[j], i * j, i, j);
 			}
 		}
-	} 
+	}
 
 	// 23 Mar 2012 : GWA : Close the file.
 	
