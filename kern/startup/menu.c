@@ -159,7 +159,8 @@ common_prog(int nargs, char **args)
 	exitcode = kmalloc(sizeof(int));
 	
 	*exitcode = 0;
-	//sys_waitpid(cmdpid, 0, 0, exitcode);
+	
+	sys_waitpid(cmdpid, 0, 0, exitcode);
 	
 	DEBUG(DB_KERN_MENU, "\nkernel: forked pid #%d has exited, menu is now awake\n", cmdpid);
 		
@@ -176,7 +177,7 @@ common_prog(int nargs, char **args)
 	 * waitpid() and exit() system calls are implemented.
 	 */ 
 	if(strlen(args[0]) == 21) {
-		clocksleep(5); 
+		//clocksleep(5); 
 	}
 	
 	//kprintf("running command with length %d\n",strlen(args[0]));
@@ -184,7 +185,6 @@ common_prog(int nargs, char **args)
 		//clocksleep(5);
 		//kprintf("\n(program name unknown): Complete.\n");
 	}
-;
 
 	return 0;
 }
