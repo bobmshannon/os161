@@ -162,6 +162,8 @@ common_prog(int nargs, char **args)
 	
 	sys_waitpid(cmdpid, 0, 0, exitcode);
 	
+	//while(1) { }
+	
 	DEBUG(DB_KERN_MENU, "\nkernel: forked pid #%d has exited, menu is now awake\n", cmdpid);
 		
 

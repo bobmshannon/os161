@@ -99,11 +99,23 @@ runprogram(char *progname, struct lock *menu_lock)
 		/* thread_exit destroys curthread->t_addrspace */
 		return result;
 	}
+	
+	//stackptr = stackptr - 4;
+	//char s[] = "foo\0";
+	//memcpy((void *)stackptr, s, sizeof(s));
+	//stackptr = stackptr + 4;
+	//memcpy((void *)stackptr, (int *)stackptr+4, sizeof(stackptr));
+
+	//int *arg0 = kmalloc(sizeof(int));
+	//*arg0 = stackptr;
+	
+	//memcpy((void *)stackptr-2, s, sizeof(s));
+
+	//stackptr -= 4;
 
 	/* Warp to user mode. */
 	enter_new_process(0 /*argc*/, NULL /*userspace addr of argv*/,
 			  stackptr, entrypoint);
-
 	
 	/* enter_new_process does not return. */
 	panic("enter_new_process returned\n");
