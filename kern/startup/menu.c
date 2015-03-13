@@ -165,13 +165,6 @@ common_prog(int nargs, char **args)
 	//while(1) { }
 	
 	DEBUG(DB_KERN_MENU, "\nkernel: forked pid #%d has exited, menu is now awake\n", cmdpid);
-		
-
-	(void)pid;
-	//int *exitcode;
-	//sys_waitpid(pid, (userptr_t)exitcode, 0, 0);
-	//clocksleep(10);
-	//menu_wait(pid);
 	
 	/* This is a really ugly (although temporary) hack to prevent 
 	 * the kernel menu and /testbin/fileonlytest from competing for stdout. 
