@@ -50,23 +50,12 @@
 
 int 
 sys_execv(const_userptr_t program, char **args, int *errcode) {
-	(void)program;
-	(void)args;
-	(void)errcode;
-	
-	(void)errcode;
-	(void)program;
 	(void)args;
 	int err = 0;
 	char dest[PATH_MAX + 1];
 	size_t len = 0;
 
 	/* Error checking. */
-	if(program == NULL) {
-		(*errcode) = ENOENT;
-		return -1;
-	}
-	
 	err = copyinstr(program, dest, PATH_MAX, &len);
 	if(err != 0) {
 		(*errcode) = EFAULT;
@@ -103,7 +92,7 @@ sys_waitpid(pid_t pid, userptr_t status, int options, int *errcode) {
 	int *exitcode;
 	exitcode = kmalloc(sizeof(int));
 	*exitcode = process_table[pid]->exitcode;
-	(void)exitcode;
+	kfree(exitcode);
 	
 	err = copyout(exitcode, status, sizeof(int));
 	if(err) {
@@ -113,7 +102,7 @@ sys_waitpid(pid_t pid, userptr_t status, int options, int *errcode) {
 	
 	DEBUG(DB_PROCESS_SYSCALL, "\nprocess #%d no longer waiting for pid #%d", curthread->t_pid, pid);
 	
-	// Free up slot in process table.
+	/* Free up slot in process table. */
 	remove_process_entry(pid);
 	
 	return pid;
@@ -143,7 +132,7 @@ menu_wait(pid_t pid) {
 	
 	P(process_table[pid]->wait_sem);
 	
-	// Free up slot in process table.
+	/* Free up slot in process table. */
 	remove_process_entry(pid);
 	
 	return pid;
@@ -174,28 +163,6 @@ sys_fork(struct trapframe *tf) {
 		panic("thread_fork failed.");
 	}
 	newthread = *ret;
-	
-	/* Copy parents address space 
-	retaddr = kmalloc(sizeof(struct addrspace));
-	err = as_copy(curthread->t_addrspace, retaddr);
-	if(err) {
-		panic("as_copy failed.");
-	}
-	newthread->t_addrspace = *retaddr;
-	*/
-	
-	/* Copy file table from parent to child. 
-	for(i = 0; i < OPEN_MAX; i++) {
-		newthread->t_fd_table[i] = kmalloc(sizeof(struct fd));
-		newthread->t_fd_table[i]->readable = curthread->t_fd_table[i]->readable;
-		newthread->t_fd_table[i]->writable = curthread->t_fd_table[i]->writable;
-		newthread->t_fd_table[i]->flags = curthread->t_fd_table[i]->flags;
-		newthread->t_fd_table[i]->offset = curthread->t_fd_table[i]->offset;
-		newthread->t_fd_table[i]->ref_count = curthread->t_fd_table[i]->ref_count;
-		newthread->t_fd_table[i]->vn = curthread->t_fd_table[i]->vn;
-		newthread->t_fd_table[i]->lock = curthread->t_fd_table[i]->lock;
-		//newthread->t_fd_table[i]->lock = lock_create("lock");
-	}*/
 	
 	DEBUG(DB_PROCESS_SYSCALL, "\nprocess #%d calling fork(), new thread spawned with pid #%d\n", curthread->t_pid, newthread->t_pid);
 	
