@@ -141,6 +141,7 @@ common_prog(int nargs, char **args)
 	int result;
 	(void)result;
 	pid_t pid;
+	(void)pid;
 #if OPT_SYNCHPROBS
 	kprintf("Warning: this probably won't work with a "
 		"synchronization-problems kernel.\n");

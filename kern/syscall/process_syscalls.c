@@ -74,19 +74,35 @@ sys_waitpid(pid_t pid, userptr_t status, int options, int *errcode) {
 	int err;
 	(void)err;
 	
+	kprintf("hello world \n");
+	
 	/* Error checking. */
 	if(pid < 0 || pid >= OPEN_MAX) {
+		DEBUG(DB_PROCESS_SYSCALL, "\n ERROR: pid #%d calling waitpid() on child process #%d, but process id is invalid\n", curthread->t_pid, pid);
 		(*errcode) = ESRCH;
 		return -1;
 	}
 	else if(pid == 0) {
+		DEBUG(DB_PROCESS_SYSCALL, "\n ERROR: pid #%d calling waitpid() on child process #0, but process is not their child\n", curthread->t_pid);
 		(*errcode) = EINVAL;
+		return -1;
+	}
+	else if(curthread->t_pid != process_table[pid]->ppid) {
+		DEBUG(DB_PROCESS_SYSCALL, "\n ERROR: pid #%d calling waitpid() on child process #%d, but process is not their child\n", curthread->t_pid, pid);
+		(*errcode) = ECHILD;
 		return -1;
 	}
 	
 	DEBUG(DB_PROCESS_SYSCALL, "\nprocess #%d waiting for pid #%d", curthread->t_pid, pid);
 	
-	P(process_table[pid]->wait_sem);
+	if(process_table[pid]->has_exited) {
+		/* Skip P'ing the semaphore because the process has already exited 
+		 * and we do not need to wait.
+		 */
+	}
+	else {
+		P(process_table[pid]->wait_sem);
+	}
 	
 	/* Send exit code back to waitpid caller. */
 	int *exitcode;
@@ -113,7 +129,7 @@ sys__exit(int code) {
 	DEBUG(DB_PROCESS_SYSCALL, "\nkernel: pid #%d exiting...\n", sys_getpid());
 	pid_t pid = sys_getpid();
 	process_table[pid]->has_exited = true;
-	process_table[pid]->exitcode = code;
+	process_table[pid]->exitcode = _MKWAIT_EXIT(code);
 	
 	V(process_table[pid]->wait_sem);
 	

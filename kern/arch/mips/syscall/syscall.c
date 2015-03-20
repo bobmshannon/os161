@@ -153,7 +153,7 @@ syscall(struct trapframe *tf)
 		case SYS_fork:
 			retval = sys_fork(tf);
 			retval = 0;
-			//err = 0;
+			*errcode = 0;
 			break;
 		case SYS_getpid:
 			retval = sys_getpid();
@@ -167,7 +167,6 @@ syscall(struct trapframe *tf)
 			err = ENOSYS;
 			break;
 	}
-
 
 	if (*errcode || retval == -1 || new_offset == -1) {
 		/*

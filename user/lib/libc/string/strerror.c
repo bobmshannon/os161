@@ -29,6 +29,7 @@
 
 #include <string.h>
 #include <kern/errmsg.h>
+#include <stdio.h>
 
 /*
  * Standard C function to return a string for a given errno.
@@ -39,5 +40,7 @@ strerror(int errcode)
 	if (errcode>=0 && errcode < sys_nerr) {
 		return sys_errlist[errcode];
 	}
-	return "Unknown error number";
+	printf("unknown error number %d\n", errcode);
+	//return "Unknown error number";
+	return "";
 }
