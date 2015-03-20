@@ -67,13 +67,9 @@ sys_execv(const_userptr_t program, char **args, int *errcode) {
 
 int 
 sys_waitpid(pid_t pid, userptr_t status, int options, int *errcode) {
-	(void)pid;
-	(void)status;
-	(void)options;
-	(void)errcode;
 	int err;
-	(void)err;
-	
+	(void)options;		// Not yet implemented, nor is it required to be
+						// for this class.
 	/* Error checking. */
 	if(pid < 0 || pid >= OPEN_MAX) {
 		DEBUG(DB_PROCESS_SYSCALL, "\n ERROR: pid #%d calling waitpid() on child process #%d, but process id is invalid\n", curthread->t_pid, pid);
@@ -95,7 +91,7 @@ sys_waitpid(pid_t pid, userptr_t status, int options, int *errcode) {
 	
 	if(process_table[pid]->has_exited) {
 		/* Skip P'ing the semaphore because the process has already exited 
-		 * and we do not need to wait.
+		 * and we do not need to wait. This will prevent a deadlock.
 		 */
 	}
 	else {
@@ -164,7 +160,7 @@ sys_getpid() {
 
 pid_t
 sys_fork(struct trapframe *tf, int *errcode) {
-	struct thread **ret;		// (*newthread) is a pointer to the child.
+	struct thread **ret;		// (*ret) is a pointer to the child.
 	struct addrspace **retaddr; // (*retaddr) is a pointer to address space copy.
 	
 	struct thread *newthread;
@@ -211,6 +207,5 @@ enter_forked_process(struct trapframe *tf_child) {
 	DEBUG(DB_PROCESS_SYSCALL, "\nprocess #%d entering user mode\n", curthread->t_pid);
 	
 	mips_usermode(&tf);
-
 }
 
