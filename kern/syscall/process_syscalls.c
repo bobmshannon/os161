@@ -106,13 +106,14 @@ sys_waitpid(pid_t pid, userptr_t status, int options, int *errcode) {
 	int *exitcode;
 	exitcode = kmalloc(sizeof(int));
 	*exitcode = process_table[pid]->exitcode;
-	kfree(exitcode);
 	
 	err = copyout(exitcode, status, sizeof(int));
 	if(err) {
 		(*errcode) = EFAULT;
 		return -1;
 	}
+	
+	kfree(exitcode);
 	
 	DEBUG(DB_PROCESS_SYSCALL, "\nprocess #%d no longer waiting for pid #%d", curthread->t_pid, pid);
 	
