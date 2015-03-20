@@ -49,23 +49,6 @@
 #include <addrspace.h>
 
 int 
-sys_execv(const_userptr_t program, char **args, int *errcode) {
-	(void)args;
-	int err = 0;
-	char dest[PATH_MAX + 1];
-	size_t len = 0;
-
-	/* Error checking. */
-	err = copyinstr(program, dest, PATH_MAX, &len);
-	if(err != 0) {
-		(*errcode) = EFAULT;
-		return -1;
-	}
-	
-	return 0;
-}
-
-int 
 sys_waitpid(pid_t pid, userptr_t status, int options, int *errcode) {
 	int err;
 	(void)options;		// Not yet implemented, nor is it required to be
@@ -207,5 +190,65 @@ enter_forked_process(struct trapframe *tf_child) {
 	DEBUG(DB_PROCESS_SYSCALL, "\nprocess #%d entering user mode\n", curthread->t_pid);
 	
 	mips_usermode(&tf);
+}
+
+int 
+sys_execv(userptr_t progname, userptr_t args, int *errcode)
+{
+	struct vnode *v;
+	vaddr_t entrypoint, stackptr;
+	int result;
+	
+	(void)progname;
+	(void)args;
+	(void)errcode;
+	
+	/* Open the file. */
+	result = vfs_open((char *)progname, O_RDONLY, 0, &v);
+	if (result) {
+		return result;
+	}
+
+	/* We should be a new thread. */
+	KASSERT(curthread->t_addrspace == NULL);
+
+	/* Create a new address space. */
+	curthread->t_addrspace = as_create();
+	if (curthread->t_addrspace==NULL) {
+		vfs_close(v);
+		return ENOMEM;
+	}
+	
+	/* File descriptor table. */
+	init_fd_table();
+
+	/* Activate it. */
+	as_activate(curthread->t_addrspace);
+
+	/* Load the executable. */
+	result = load_elf(v, &entrypoint);
+	if (result) {
+		/* thread_exit destroys curthread->t_addrspace */
+		vfs_close(v);
+		return result;
+	}
+
+	/* Done with the file now. */
+	vfs_close(v);
+
+	/* Define the user stack in the address space */
+	result = as_define_stack(curthread->t_addrspace, &stackptr);
+	if (result) {
+		/* thread_exit destroys curthread->t_addrspace */
+		return result;
+	}
+	
+	/* Warp to user mode. */
+	enter_new_process(0 /*argc*/, NULL /*userspace addr of argv*/,
+			  stackptr, entrypoint);
+	
+	/* enter_new_process does not return. */
+	panic("enter_new_process returned\n");
+	return EINVAL;
 }
 
