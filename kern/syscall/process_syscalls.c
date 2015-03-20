@@ -74,8 +74,6 @@ sys_waitpid(pid_t pid, userptr_t status, int options, int *errcode) {
 	int err;
 	(void)err;
 	
-	kprintf("hello world \n");
-	
 	/* Error checking. */
 	if(pid < 0 || pid >= OPEN_MAX) {
 		DEBUG(DB_PROCESS_SYSCALL, "\n ERROR: pid #%d calling waitpid() on child process #%d, but process id is invalid\n", curthread->t_pid, pid);
@@ -160,7 +158,7 @@ sys_getpid() {
 }
 
 pid_t
-sys_fork(struct trapframe *tf) {
+sys_fork(struct trapframe *tf, int *errcode) {
 	struct thread **ret;		// (*newthread) is a pointer to the child.
 	struct addrspace **retaddr; // (*retaddr) is a pointer to address space copy.
 	
@@ -171,12 +169,17 @@ sys_fork(struct trapframe *tf) {
 	
 	/* Copy trapframe */
 	tf_child = kmalloc(sizeof(struct trapframe));
+	if(tf_child == NULL) {
+		return -1;
+		*errcode = ENOMEM;	
+	}
 	memcpy(tf_child, tf, sizeof(struct trapframe));
 	
 	/* Call thread_fork */
 	err = thread_fork("forked pid", (void *)enter_forked_process, tf_child, dummy, ret);
 	if(err) {
-		panic("thread_fork failed.");
+		return -1;
+		*errcode = ENOMEM;
 	}
 	newthread = *ret;
 	
@@ -184,6 +187,7 @@ sys_fork(struct trapframe *tf) {
 	
 	(void)i;
 	(void)retaddr;
+	*errcode = 0;
 	return newthread->t_pid;
 }
 

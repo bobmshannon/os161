@@ -629,6 +629,9 @@ thread_fork(const char *name,
 	int i;
 	for(i = 0; i < OPEN_MAX; i++) {
 		newthread->t_fd_table[i] = kmalloc(sizeof(struct fd));
+		if(newthread->t_fd_table[i] == NULL) {
+			return -1;
+		}
 		newthread->t_fd_table[i]->readable = curthread->t_fd_table[i]->readable;
 		newthread->t_fd_table[i]->writable = curthread->t_fd_table[i]->writable;
 		newthread->t_fd_table[i]->flags = curthread->t_fd_table[i]->flags;
@@ -648,7 +651,7 @@ thread_fork(const char *name,
 	}
 	err = as_copy(curthread->t_addrspace, retaddr);
 	if(err) {
-		panic("as_copy failed.");
+		return -1;
 	}
 	newthread->t_addrspace = *retaddr;
 	

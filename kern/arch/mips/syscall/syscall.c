@@ -105,7 +105,7 @@ syscall(struct trapframe *tf)
 	errcode = kmalloc(sizeof(int));
 	*errcode = 0;
 	
-	//int errno;
+	//kprintf("callno %d\n", callno);
 	
 	switch (callno) {
 	    case SYS_reboot:
@@ -151,9 +151,8 @@ syscall(struct trapframe *tf)
 			retval = sys_waitpid(tf->tf_a0, (userptr_t)tf->tf_a1, tf->tf_a2, errcode);
 			break;
 		case SYS_fork:
-			retval = sys_fork(tf);
+			retval = sys_fork(tf, errcode);
 			retval = 0;
-			*errcode = 0;
 			break;
 		case SYS_getpid:
 			retval = sys_getpid();
