@@ -105,6 +105,10 @@ sys_waitpid(pid_t pid, userptr_t status, int options, int *errcode) {
 	/* Send exit code back to waitpid caller. */
 	int *exitcode;
 	exitcode = kmalloc(sizeof(int));
+	if(exitcode == NULL) {
+		(*errcode) = EFAULT;
+		return -1;		
+	}
 	*exitcode = process_table[pid]->exitcode;
 	
 	err = copyout(exitcode, status, sizeof(int));
