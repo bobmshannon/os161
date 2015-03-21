@@ -72,14 +72,54 @@ runprogram(char *progname, userptr_t args)
 	(void)j;
 	(void)err;
 	
-	len = strlen(progname) + 1;		// Add one, since strlen does not take into account NULL terminator.
-	len	= (len + 3) & ~(3);				// Round string length up to nearest multiple of 4.
-	total_len += len;					// Keep track of the total length, so we know how much space to allocate later.
-	argc++;
+	/* Determine argument count. */
+	while(kargs[argc] != NULL) {
+		len = strlen(kargs[argc]) + 1;		// Add one, since strlen does not take into account NULL terminator.
+		len	= (len + 3) & ~(3);				// Round string length up to nearest multiple of 4.
+		total_len += len;					// Keep track of the total length, so we know how much space to allocate later.
+		argc++;
+	}
 	
 	/* Determine number of bytes to allocate for kernel buffer. */
 	total_size = total_len * sizeof(char);
 	
+	/* Copy in each argument one by one, making sure each string begins on boundaries that are evenly divisible by 4. */
+	char kargbuf[total_size];
+	char kargoffset[argc];
+	int ptr_index, upper;
+	size_t *actual;
+	char *ptr;
+
+	actual = kmalloc(sizeof(int));
+	if(actual == NULL) {
+		// something went wrong, return error.
+	}
+	ptr_index = 0;
+	
+	for(i = 0; i < argc; i++) {
+		ptr = &kargbuf[ptr_index];										// Create a pointer to the next free position in the kargbuf array.
+		
+		len = sizeof(kargs[i]);
+		strcpy(ptr,kargs[i]);											// Copy in the string.
+		
+		//err = copyinstr((const_userptr_t)kargs[i], ptr,
+		//				strlen(kargs[i]), actual);						
+		
+		upper	= ( (len + ptr_index) + 3) & ~(3);						// Determine the next free index in kargbuf that is evenly divisible by 4.		
+
+		
+		for(j = ptr_index + len; j < upper; j++) {
+			kargbuf[j] = '\0';											// Pad slots that we left behind in the previous step with NULL characters.
+		}
+		
+		*actual = 0;													// Reset number of characters copied in to zero.
+		kargoffset[i] = ptr_index;										// Store offset. Used to locate the beginning of the i'th argument in the array.
+		ptr_index = upper;												// Update pointer index to the next free slot evenly divisible by 4.
+
+	}
+	
+	kfree(actual);
+
 	/*
 	char a[10];
 	char *x = a;
@@ -136,7 +176,7 @@ runprogram(char *progname, userptr_t args)
 	stackptr -= 4;
 	int *offset = kmalloc(sizeof(int));
 	*offset = 0;
-	copyout(offset, (userptr_t)stackptr, 4);
+	copyout(offset, (userptr_t)stackptr, 4);		// Remember, we need to store NULL at the end of our argv array of pointers.
 	
 	stackptr -= 4;
 	*offset = stackptr + 8;

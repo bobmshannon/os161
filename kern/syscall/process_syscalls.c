@@ -211,7 +211,7 @@ sys_execv(userptr_t progname, userptr_t args, int *errcode)
 	(void)i;
 	
 	/* Determine argument count. */
-	while(kargs[argc] == NULL) {
+	while(kargs[argc] != NULL) {
 		len = strlen(kargs[argc]) + 1;		// Add one, since strlen does not take into account NULL terminator.
 		len	= (len + 3) & ~(3);				// Round string length up to nearest multiple of 4.
 		total_len += len;					// Keep track of the total length, so we know how much space to allocate later.
