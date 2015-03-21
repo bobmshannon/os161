@@ -54,7 +54,7 @@
  * Calls vfs_open on progname and thus may destroy it.
  */
 int
-runprogram(char *progname, userptr_t args)
+runprogram(char *progname, userptr_t args, unsigned long nargs)
 {
 	struct vnode *v;
 	vaddr_t entrypoint, stackptr;
@@ -72,12 +72,15 @@ runprogram(char *progname, userptr_t args)
 	(void)j;
 	(void)err;
 	
+	unsigned long count = 0;
+	
 	/* Determine argument count. */
-	while(kargs[argc] != NULL) {
+	while(count < nargs) {
 		len = strlen(kargs[argc]) + 1;		// Add one, since strlen does not take into account NULL terminator.
 		len	= (len + 3) & ~(3);				// Round string length up to nearest multiple of 4.
 		total_len += len;					// Keep track of the total length, so we know how much space to allocate later.
 		argc++;
+		count++;
 	}
 	
 	/* Determine number of bytes to allocate for kernel buffer. */
@@ -185,7 +188,8 @@ runprogram(char *progname, userptr_t args)
 	copyout(ptr_value, (userptr_t)stackptr, 4);
 	stackptr -= 4 * argc;
 	
-
+	kfree(ptr_value);
+	
 	/* Copy program name to the user stack.
 	stackptr -= total_size;
 	copyout(progname, (userptr_t)stackptr, total_size);
