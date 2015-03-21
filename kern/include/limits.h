@@ -48,10 +48,6 @@
 #define LOGIN_NAME_MAX  __LOGIN_NAME_MAX
 #define OPEN_MAX        __OPEN_MAX
 #define IOV_MAX         __IOV_MAX
-<<<<<<< HEAD
-#define RUNNING_MAX		__RUNNING_MAX
-=======
 #define RUNNING_MAX     __RUNNING_MAX
->>>>>>> fspass
 
 #endif /* _LIMITS_H_ */

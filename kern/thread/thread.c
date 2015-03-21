@@ -158,11 +158,7 @@ thread_create(const char *name)
 	/* PID */
 	pid_t pid = add_process_entry(thread);
 	thread->t_pid = pid;
-<<<<<<< HEAD
-	
-=======
 
->>>>>>> fspass
 	return thread;
 }
 
@@ -216,7 +212,7 @@ init_fd_table(void) {
 	curthread->t_fd_table[1]->vn = stdin;
 	curthread->t_fd_table[1]->lock = lock_create("stdout");
 	curthread->t_fd_table[1]->writable = true;
-	curthread->t_fd_table[1]->readable = true;
+	curthread->t_fd_table[1]->readable = false;
 
 	/* stderr */
 	curthread->t_fd_table[2] = kmalloc(sizeof(struct fd*));
@@ -233,28 +229,9 @@ init_fd_table(void) {
 		curthread->t_fd_table[i]->flags = 0;
 		curthread->t_fd_table[i]->offset = 0;
 		curthread->t_fd_table[i]->ref_count = 0;
-		curthread->t_fd_table[i]->vn = NULL;	
-		curthread->t_fd_table[i]->lock = lock_create("lock");		
+		curthread->t_fd_table[i]->vn = NULL;		
 	}
 } 
-
-/* 
- * Initialize system wide process/thread table.
- */
-void
-init_process_table() {
-	int i;
-	
-	for(i = 0; i < RUNNING_MAX; i++) {
-		process_table[i] = kmalloc(sizeof(struct process*));
-		process_table[i]->pid = RUNNING_MAX + 1;	/* We're initializing these PID's to arbitrary values here. */
-		process_table[i]->ppid = RUNNING_MAX + 1;
-		process_table[i]->self = NULL;
-		process_table[i]->has_exited = false;
-		process_table[i]->exitcode = 0;
-		process_table[i]->wait_sem = sem_create("wait sem", 0);
-	}
-}
 
 /*
  * Create a CPU structure. This is used for the bootup CPU and
@@ -456,9 +433,6 @@ thread_bootstrap(void)
 	struct thread *bootthread;
 
 	cpuarray_init(&allcpus);
-	
-	/* Initialize the process table. */
-	init_process_table();
 
 	/* Initialize the process table. */
 	init_process_table();
@@ -529,11 +503,8 @@ int remove_process_entry(pid_t pid) {
 	return 1;
 }
 
-<<<<<<< HEAD
-=======
 
 
->>>>>>> fspass
 /*
  * New CPUs come here once MD initialization is finished. curthread
  * and curcpu should already be initialized.
@@ -763,10 +734,7 @@ thread_fork_pid(const char *name,
 	pid_t pid = add_process_entry(newthread);
 	newthread->t_pid = pid;
 	process_table[pid]->ppid = curthread->t_pid;
-<<<<<<< HEAD
-=======
  
->>>>>>> fspass
 
 	/*
 	 * Because new threads come out holding the cpu runqueue lock
@@ -790,109 +758,8 @@ thread_fork_pid(const char *name,
 	if (ret != NULL) {
 		*ret = newthread;
 	}
-	
-	/* Copy file table from parent to child. */ 
-	int i;
-	for(i = 0; i < OPEN_MAX; i++) {
-		newthread->t_fd_table[i] = kmalloc(sizeof(struct fd));
-		newthread->t_fd_table[i]->readable = curthread->t_fd_table[i]->readable;
-		newthread->t_fd_table[i]->writable = curthread->t_fd_table[i]->writable;
-		newthread->t_fd_table[i]->flags = curthread->t_fd_table[i]->flags;
-		newthread->t_fd_table[i]->offset = curthread->t_fd_table[i]->offset;
-		newthread->t_fd_table[i]->ref_count = curthread->t_fd_table[i]->ref_count;
-		newthread->t_fd_table[i]->vn = curthread->t_fd_table[i]->vn;
-		newthread->t_fd_table[i]->lock = curthread->t_fd_table[i]->lock;
-		//newthread->t_fd_table[i]->lock = lock_create("lock");
-	}
-
-	/* Copy parents address space */
-	struct addrspace **retaddr;
-	int err;
-	retaddr = kmalloc(sizeof(struct addrspace));
-	if(curthread->t_addrspace == NULL) {
-		panic("parent address space null.");
-	}
-	err = as_copy(curthread->t_addrspace, retaddr);
-	if(err) {
-		panic("as_copy failed.");
-	}
-	newthread->t_addrspace = *retaddr;
 
 	return pid;
-}
-
-/* Temporary re-definition of thread_fork which instead returns
- * a process ID. This is required until the fork() system call is 
- * implemented, and also because C does not support function
- * overriding AFAIK. So, to prevent code already using thread_fork()
- * from breaking, a new variant thread_fork_pid is defined.
- */
-int
-thread_fork_pid(const char *name,
-	    void (*entrypoint)(void *data1, unsigned long data2),
-	    void *data1, unsigned long data2,
-	    struct thread **ret)
-{
-	struct thread *newthread;
-
-	newthread = thread_create(name);
-	if (newthread == NULL) {
-		return ENOMEM;
-	}
-
-	/* Allocate a stack */
-	newthread->t_stack = kmalloc(STACK_SIZE);
-	if (newthread->t_stack == NULL) {
-		thread_destroy(newthread);
-		return ENOMEM;
-	}
-	thread_checkstack_init(newthread);
-
-	/*
-	 * Now we clone various fields from the parent thread.
-	 */
-
-	/* Thread subsystem fields */
-	newthread->t_cpu = curthread->t_cpu;
-
-	/* VM fields */
-	/* do not clone address space -- let caller decide on that */
-
-	/* VFS fields */
-	if (curthread->t_cwd != NULL) {
-		VOP_INCREF(curthread->t_cwd);
-		newthread->t_cwd = curthread->t_cwd;
-	}
-	
-	/* PID */
-	pid_t pid = add_process_entry(newthread);
-	newthread->t_pid = pid;
-	process_table[pid]->ppid = curthread->t_pid;
-
-	/*
-	 * Because new threads come out holding the cpu runqueue lock
-	 * (see notes at bottom of thread_switch), we need to account
-	 * for the spllower() that will be done releasing it.
-	 */
-	newthread->t_iplhigh_count++;
-
-	/* Set up the switchframe so entrypoint() gets called */
-	switchframe_init(newthread, entrypoint, data1, data2);
-
-	/* Lock the current cpu's run queue and make the new thread runnable */
-	thread_make_runnable(newthread, false);
-
-	/*
-	 * Return new thread structure if it's wanted. Note that using
-	 * the thread structure from the parent thread should be done
-	 * only with caution, because in general the child thread
-	 * might exit at any time.
-	 */
-	if (ret != NULL) {
-		*ret = newthread;
-	}
-
-	return newthread->t_pid;
 }
 
 /*
@@ -1172,9 +1039,6 @@ thread_exit(void)
 
 	/* Check the stack guard band. */
 	thread_checkstack(cur);
-	
-	/* Free up a slot in the process table */
-	remove_process_entry(cur->t_pid);
 
 	/* Interrupts off on this processor */
         splhigh();

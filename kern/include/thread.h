@@ -57,8 +57,6 @@ struct vnode;
 /* Macro to test if two addresses are on the same kernel stack */
 #define SAME_STACK(p1, p2)     (((p1) & STACK_MASK) == ((p2) & STACK_MASK))
 
-/* System-wide process/thread table. */
-struct process* process_table[RUNNING_MAX];
 
 /* States a thread can be in. */
 typedef enum {
@@ -80,7 +78,7 @@ struct thread {
 	char *t_name;			/* Name of this thread */
 	const char *t_wchan_name;	/* Name of wait channel, if sleeping */
 	threadstate_t t_state;		/* State this thread is in */
-	pid_t t_pid;
+
 	/*
 	 * Thread subsystem internal fields.
 	 */
@@ -155,7 +153,7 @@ void thread_shutdown(void);
  * thread should be done only with caution, because in general the
  * child thread might exit at any time.) Returns an error code.
  */
-pid_t thread_fork(const char *name, 
+int thread_fork(const char *name, 
                 void (*func)(void *, unsigned long),
                 void *data1, unsigned long data2, 
                 struct thread **ret);
@@ -165,16 +163,6 @@ pid_t thread_fork_pid(const char *name,
                 void *data1, unsigned long data2, 
                 struct thread **ret);
 
-/* Temporary re-definition of thread_fork which instead returns
- * a process ID. This is required until the fork() system call is 
- * implemented, and also because C does not support function
- * overriding AFAIK. So, to prevent code already using thread_fork()
- * from breaking, a new variant thread_fork_pid is defined.
- */
- pid_t thread_fork_pid(const char *name, 
-                void (*func)(void *, unsigned long),
-                void *data1, unsigned long data2, 
-                struct thread **ret);
 /*
  * Cause the current thread to exit.
  * Interrupts need not be disabled.

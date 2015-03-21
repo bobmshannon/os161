@@ -44,10 +44,7 @@
 #include <wchan.h>
 #include <current.h>
 #include <process.h>
-<<<<<<< HEAD
-=======
 #include <thread.h>
->>>>>>> fspass
 #include "opt-synchprobs.h"
 #include "opt-sfs.h"
 #include "opt-net.h"
@@ -150,22 +147,6 @@ common_prog(int nargs, char **args)
 		"synchronization-problems kernel.\n");
 #endif
 	
-<<<<<<< HEAD
-	pid_t pid = thread_fork_pid(args[0] /* thread name */,
-			cmd_progthread /* thread function */,
-			args /* thread arg */, nargs /* thread arg */,
-			NULL);
-			
-	userptr_t status;
-	int *errcode;
-	
-	sys_waitpid(pid, status, 0, errcode);
-			
-	if (result == -1) {
-		kprintf("thread_fork failed: %s\n", strerror(result));
-		return result;
-	}
-=======
 	
 	cmdpid = thread_fork_pid(args[0],
 		cmd_progthread,
@@ -185,7 +166,6 @@ common_prog(int nargs, char **args)
 	//while(1) { }
 	
 	DEBUG(DB_KERN_MENU, "\nkernel: forked pid #%d has exited, menu is now awake\n", cmdpid);
->>>>>>> fspass
 	
 	/* This is a really ugly (although temporary) hack to prevent 
 	 * the kernel menu and /testbin/fileonlytest from competing for stdout. 
@@ -733,12 +713,10 @@ void
 menu(char *args)
 {
 	char buf[64];
+	menu_lock = lock_create("menu lock");
 	menu_execute(args, 1);
 
 	while (1) {
-<<<<<<< HEAD
-
-=======
 		/*if(process_table[cmdpid]->self != NULL && process_table[cmdpid]->self->t_state == S_RUN) {
 			command_running = true;
 		}
@@ -747,10 +725,10 @@ menu(char *args)
 		}*/
 		
 	//	if(!command_running) {
->>>>>>> fspass
 			kprintf("OS/161 kernel [? for menu]: ");
 	//	}
 			kgets(buf, sizeof(buf));
+		//lock_release(menu_lock);
 		
 	//	if(!command_running) {
 			menu_execute(buf, 0);

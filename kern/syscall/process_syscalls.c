@@ -45,99 +45,6 @@
 #include <thread.h>
 #include <process.h>
 #include <kern/wait.h>
-<<<<<<< HEAD
-#include <wchan.h>
-#include <addrspace.h>
-#include <mips/trapframe.h>
-
-pid_t
-sys_getpid(void) {
-	return curthread->t_pid;
-}
-
-int
-sys_execv(const_userptr_t program, char **args, int *errcode) {
-
-	(void)errcode;
-	(void)program;
-	(void)args;
-	int err = 0;
-	int argc = 0;
-	char dest[PATH_MAX + 1];
-	size_t len = 0;
-	
-	err = copyinstr(program, dest, PATH_MAX, &len);
-	if(err != 0) {
-		(*errcode) = EFAULT;
-		return -1;
-	}
-	(void)argc;
-	
-	/*
-	int errcheck = 0;
-	char dest[PATH_MAX + 1];
-	size_t len = 0;
-	struct vnode *vn = 0;
-	
-	//Copy file name from userspace to kernelspace
-	errcheck = copyinstr(program, dest, PATH_MAX, &len);
-	if(errcheck != 0) {
-		kprintf("copyinstr() failed.\n");
-		return -1;
-	}
-	
-	//If copied string is of length 0.
-	if(len == 0) {
-		(*errcode) = ENOENT;
-		return -1;
-	}
-	
-	errcheck = vfs_open(dest, O_RDONLY, 0, &vn);
-	if(errcheck) {
-		(*errcode) = ENOENT;
-		return -1;
-	}
-	
-	
-	char kernel_args[NAME_MAX];
-	char **kargs;
-	
-	//Kernel Buffer
-	kargs = (char **)kmalloc(sizeof(char))
-	
-	//Copy arguments from userspace to kernel buffer
-	if(args != 0){
-		while(args[argc] != 0){
-			if(argc >= ARG_MAX){
-				(*errcode) = E2BIG;
-				return -1;
-			}
-			
-			len = 0;
-			copyinstr((const_userptr_t)args[argc], kernel_args, NAME_MAX, &len);
-			kernel_args[len] = 0;
-			kargs[argc] = kernel_args;
-			
-			argc++;
-		}			
-	}
-	*/
-	
-	return 0;
-}
-
-void
-sys__exit(int code) {	
-	pid_t pid = sys_getpid();
-	process_table[pid]->has_exited = true;
-	process_table[pid]->exitcode = code;
-	
-	/* Let's keep this really simple by assuming that only
-	 * one process can wait on a specific PID, which in most
-	 * cases would be the parent who called fork. Thus, we
-	 * only decrement the waiting semaphore once.
-	 */
-=======
 #include <mips/trapframe.h>
 #include <addrspace.h>
 
@@ -206,40 +113,11 @@ sys__exit(int code) {
 	process_table[pid]->has_exited = true;
 	process_table[pid]->exitcode = _MKWAIT_EXIT(code);
 	
->>>>>>> fspass
 	V(process_table[pid]->wait_sem);
 	
 	thread_exit();
 }
 
-<<<<<<< HEAD
-pid_t 
-sys_waitpid(pid_t pid, userptr_t status, int options, int *errcode) {
-	// TODO: handle options argument checking.
-	int err;
-	/* Error checking. */
-	if(pid < 0 || pid == 0 || pid > RUNNING_MAX) {
-		(*errcode) = ESRCH;
-		return -1;
-	}
-	
-	P(process_table[pid]->wait_sem);
-	
-	int *exitcode;
-	*exitcode = _MKWAIT_EXIT(process_table[pid]->exitcode);
-
-	/* Send exit code back to user */
-	err = copyout(exitcode, status, sizeof(int));
-	if(err) {
-		(*errcode) = EFAULT;
-		return -1;
-	}
-	
-	remove_process_entry(pid);
-	
-	(void)status;
-	(void)options;
-=======
 int 
 menu_wait(pid_t pid) {
 	/* Error checking. */
@@ -255,15 +133,10 @@ menu_wait(pid_t pid) {
 	/* Free up slot in process table. */
 	remove_process_entry(pid);
 	
->>>>>>> fspass
 	return pid;
 }
 
 pid_t
-<<<<<<< HEAD
-sys_fork(struct trapframe *tf) {
-	struct thread **ret;		// (*newthread) is a pointer to the child.
-=======
 sys_getpid() {
 	return curthread->t_pid;
 }
@@ -271,7 +144,6 @@ sys_getpid() {
 pid_t
 sys_fork(struct trapframe *tf, int *errcode) {
 	struct thread **ret;		// (*ret) is a pointer to the child.
->>>>>>> fspass
 	struct addrspace **retaddr; // (*retaddr) is a pointer to address space copy.
 	
 	struct thread *newthread;
@@ -281,49 +153,15 @@ sys_fork(struct trapframe *tf, int *errcode) {
 	
 	/* Copy trapframe */
 	tf_child = kmalloc(sizeof(struct trapframe));
-<<<<<<< HEAD
-=======
 	if(tf_child == NULL) {
 		return -1;
 		*errcode = ENOMEM;	
 	}
->>>>>>> fspass
 	memcpy(tf_child, tf, sizeof(struct trapframe));
 	
 	/* Call thread_fork */
 	err = thread_fork("forked pid", (void *)enter_forked_process, tf_child, dummy, ret);
 	if(err) {
-<<<<<<< HEAD
-		panic("thread_fork failed.");
-	}
-	newthread = *ret;
-	
-	/* Copy parents address space 
-	retaddr = kmalloc(sizeof(struct addrspace));
-	err = as_copy(curthread->t_addrspace, retaddr);
-	if(err) {
-		panic("as_copy failed.");
-	}
-	newthread->t_addrspace = *retaddr;
-	*/
-	
-	/* Copy file table from parent to child. 
-	for(i = 0; i < OPEN_MAX; i++) {
-		newthread->t_fd_table[i] = kmalloc(sizeof(struct fd));
-		newthread->t_fd_table[i]->readable = curthread->t_fd_table[i]->readable;
-		newthread->t_fd_table[i]->writable = curthread->t_fd_table[i]->writable;
-		newthread->t_fd_table[i]->flags = curthread->t_fd_table[i]->flags;
-		newthread->t_fd_table[i]->offset = curthread->t_fd_table[i]->offset;
-		newthread->t_fd_table[i]->ref_count = curthread->t_fd_table[i]->ref_count;
-		newthread->t_fd_table[i]->vn = curthread->t_fd_table[i]->vn;
-		newthread->t_fd_table[i]->lock = curthread->t_fd_table[i]->lock;
-		//newthread->t_fd_table[i]->lock = lock_create("lock");
-	}*/
-	
-	(void)i;
-	(void)retaddr;
-	return newthread->t_pid;
-=======
 		return -1;
 		*errcode = ENOMEM;
 	}
@@ -474,22 +312,5 @@ sys_execv(userptr_t progname, userptr_t args, int *errcode)
 	panic("enter_new_process returned\n");
 	return EINVAL;
 
->>>>>>> fspass
 }
 
-void 
-enter_forked_process(struct trapframe *tf_child) {
-	//kprintf("kernel: entering forked process...\n");
-	struct trapframe tf;
-	
-	tf_child->tf_v0 = 0;
-	tf_child->tf_a0 = 0;
-	tf_child->tf_epc += 4;
-	
-	as_activate(curthread->t_addrspace);
-	
-	tf = *tf_child;
-	
-	mips_usermode(&tf);
-
-}

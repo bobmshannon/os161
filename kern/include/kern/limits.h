@@ -57,6 +57,7 @@
 /* Max bytes for an exec function */
 #define __ARG_MAX       (64 * 1024)
 
+
 /*
  * Important for system behavior, but not a big part of the API.
  */
@@ -70,13 +71,8 @@
 /* Max bytes for atomic pipe I/O -- see description in the pipe() man page */
 #define __PIPE_BUF      512
 
-<<<<<<< HEAD
-/* Max number of running processes. */
-#define __RUNNING_MAX	2048
-=======
 /* Max number of running processes */
 #define __RUNNING_MAX	1024
->>>>>>> fspass
 
 /*
  * Not so important parts of the API.
