@@ -85,7 +85,7 @@ runprogram(char *progname, userptr_t args)
 	
 	/* Copy in each argument one by one, making sure each string begins on boundaries that are evenly divisible by 4. */
 	char kargbuf[total_size];
-	char kargoffset[argc];
+	int kargoffset[argc];
 	int ptr_index, upper;
 	size_t *actual;
 	char *ptr;
@@ -97,24 +97,20 @@ runprogram(char *progname, userptr_t args)
 	ptr_index = 0;
 	
 	for(i = 0; i < argc; i++) {
-		ptr = &kargbuf[ptr_index];										// Create a pointer to the next free position in the kargbuf array.
+		ptr = &kargbuf[ptr_index];                             // Create a pointer to the next free position in the kargbuf array.
 		
-		len = sizeof(kargs[i]);
-		strcpy(ptr,kargs[i]);											// Copy in the string.
+		len = strlen(kargs[i]) + 1;
+		strcpy(ptr,kargs[i]);                                  // Copy in the string.
 		
-		//err = copyinstr((const_userptr_t)kargs[i], ptr,
-		//				strlen(kargs[i]), actual);						
-		
-		upper	= ( (len + ptr_index) + 3) & ~(3);						// Determine the next free index in kargbuf that is evenly divisible by 4.		
+		upper	= ( (len + ptr_index) + 3) & ~(3);             // Determine the next free index in kargbuf that is evenly divisible by 4.		
 
-		
 		for(j = ptr_index + len; j < upper; j++) {
-			kargbuf[j] = '\0';											// Pad slots that we left behind in the previous step with NULL characters.
+			kargbuf[j] = '\0';                                 // Pad slots that we left behind in the previous step with NULL characters.
 		}
 		
-		*actual = 0;													// Reset number of characters copied in to zero.
-		kargoffset[i] = ptr_index;										// Store offset. Used to locate the beginning of the i'th argument in the array.
-		ptr_index = upper;												// Update pointer index to the next free slot evenly divisible by 4.
+		*actual = 0;                                           // Reset number of characters copied in to zero.
+		kargoffset[i] = ptr_index;                             // Store offset. Used to locate the beginning of the i'th argument in the array.
+		ptr_index = upper;                                     // Update pointer index to the next free slot evenly divisible by 4.
 
 	}
 	
@@ -168,11 +164,34 @@ runprogram(char *progname, userptr_t args)
 		return result;
 	}
 	
-	/* Copy program name to the user stack. */
+	/* Push arguments array to the stack */
+	stackptr -= total_size;
+	copyout(&kargbuf[0], (userptr_t)stackptr, total_size);
+	
+	/* Push pointers to each argument to the stack */ 
+	int base = stackptr;
+	int *ptr_value = kmalloc(sizeof(int));
+	
+	stackptr -= 4;
+	
+	for(i = argc - 1; i >= 0; i--) {
+		stackptr -= 4;
+		*ptr_value = base + kargoffset[i];
+		copyout(ptr_value, (userptr_t)stackptr, 4);
+	}
+	
+	stackptr += 4 * argc;
+	*ptr_value = 0;
+	copyout(ptr_value, (userptr_t)stackptr, 4);
+	stackptr -= 4 * argc;
+	
+
+	/* Copy program name to the user stack.
 	stackptr -= total_size;
 	copyout(progname, (userptr_t)stackptr, total_size);
-	
-	/* Copy program name offset to the user stack. */
+	 */
+	 
+	/* Copy program name offset to the user stack. 
 	stackptr -= 4;
 	int *offset = kmalloc(sizeof(int));
 	*offset = 0;
@@ -181,6 +200,7 @@ runprogram(char *progname, userptr_t args)
 	stackptr -= 4;
 	*offset = stackptr + 8;
 	copyout(offset, (userptr_t)stackptr, 4);
+	*/
 	
 	/* Warp to user mode. */
 	enter_new_process(0 /*argc*/, (userptr_t)stackptr /*userspace addr of argv*/,
