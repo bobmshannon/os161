@@ -45,6 +45,7 @@
 #include <vfs.h>
 #include <syscall.h>
 #include <test.h>
+#include <copyinout.h>
 
 /*
  * Load program "progname" and start running it in usermode.
@@ -53,15 +54,42 @@
  * Calls vfs_open on progname and thus may destroy it.
  */
 int
-runprogram(char *progname, struct lock *menu_lock)
+runprogram(char *progname, userptr_t args)
 {
 	struct vnode *v;
 	vaddr_t entrypoint, stackptr;
-	int result;
-	(void)menu_lock;
+	int result, argc, i, total_len, total_size, len, err, j;
+	char **kargs;
 	
+	kargs = (char **)args;
+	argc = 0;
+	total_len = 0;
+	
+	(void)progname;
+	(void)args;
+	(void)argc;
+	(void)i;
+	(void)j;
+	(void)err;
+	
+	len = strlen(progname) + 1;		// Add one, since strlen does not take into account NULL terminator.
+	len	= (len + 3) & ~(3);				// Round string length up to nearest multiple of 4.
+	total_len += len;					// Keep track of the total length, so we know how much space to allocate later.
+	argc++;
+	
+	/* Determine number of bytes to allocate for kernel buffer. */
+	total_size = total_len * sizeof(char);
+	
+	/*
+	char a[10];
+	char *x = a;
+	char *y = &a[0];
+	
+	copyinstr(const_userptr_t usersrc, char *dest, size_t len, size_t *actual)
+	*/
+
 	/* Open the file. */
-	result = vfs_open(progname, O_RDONLY, 0, &v);
+	result = vfs_open((char *)progname, O_RDONLY, 0, &v);
 	if (result) {
 		return result;
 	}
@@ -100,25 +128,27 @@ runprogram(char *progname, struct lock *menu_lock)
 		return result;
 	}
 	
-	//stackptr = stackptr - 4;
-	//char s[] = "foo\0";
-	//memcpy((void *)stackptr, s, sizeof(s));
-	//stackptr = stackptr + 4;
-	//memcpy((void *)stackptr, (int *)stackptr+4, sizeof(stackptr));
-
-	//int *arg0 = kmalloc(sizeof(int));
-	//*arg0 = stackptr;
+	/* Copy program name to the user stack. */
+	stackptr -= total_size;
+	copyout(progname, (userptr_t)stackptr, total_size);
 	
-	//memcpy((void *)stackptr-2, s, sizeof(s));
-
-	//stackptr -= 4;
-
+	/* Copy program name offset to the user stack. */
+	stackptr -= 4;
+	int *offset = kmalloc(sizeof(int));
+	*offset = 0;
+	copyout(offset, (userptr_t)stackptr, 4);
+	
+	stackptr -= 4;
+	*offset = stackptr + 8;
+	copyout(offset, (userptr_t)stackptr, 4);
+	
 	/* Warp to user mode. */
-	enter_new_process(0 /*argc*/, NULL /*userspace addr of argv*/,
+	enter_new_process(0 /*argc*/, (userptr_t)stackptr /*userspace addr of argv*/,
 			  stackptr, entrypoint);
 	
 	/* enter_new_process does not return. */
 	panic("enter_new_process returned\n");
 	return EINVAL;
+
 }
 
