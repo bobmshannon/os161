@@ -108,7 +108,6 @@ runprogram(char *progname, userptr_t args, unsigned long nargs)
 		*actual = 0;                                           // Reset number of characters copied in to zero.
 		kargoffset[i] = ptr_index;                             // Store offset. Used to locate the beginning of the i'th argument in the array.
 		ptr_index = upper;                                     // Update pointer index to the next free slot evenly divisible by 4.
-
 	}
 	
 	kfree(actual);
@@ -174,6 +173,5 @@ runprogram(char *progname, userptr_t args, unsigned long nargs)
 	/* enter_new_process does not return. */
 	panic("enter_new_process returned\n");
 	return EINVAL;
-
 }
 
