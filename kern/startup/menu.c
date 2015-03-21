@@ -647,8 +647,7 @@ cmd_dispatch(char *cmd)
 				    aftersecs, afternsecs,
 				    &secs, &nsecs);
 		
-			clocksleep(5);
-			kprintf("\nOperation took %lu.%09lu seconds\n",
+			kprintf("Operation took %lu.%09lu seconds\n",
 				(unsigned long) secs,
 				(unsigned long) nsecs);
 
