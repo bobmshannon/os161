@@ -44,6 +44,10 @@
 #include <wchan.h>
 #include <current.h>
 #include <process.h>
+<<<<<<< HEAD
+=======
+#include <thread.h>
+>>>>>>> fspass
 #include "opt-synchprobs.h"
 #include "opt-sfs.h"
 #include "opt-net.h"
@@ -55,6 +59,9 @@
 #define _PATH_SHELL "/bin/sh"
 
 #define MAXMENUARGS  16
+
+bool command_running = false;
+pid_t cmdpid;
 
 // XXX this should not be in this file
 void
@@ -98,7 +105,7 @@ cmd_progthread(void *ptr, unsigned long nargs)
 	KASSERT(nargs >= 1);
 
 	if (nargs > 2) {
-		kprintf("Warning: argument passing from menu not supported\n");
+		//kprintf("Warning: argument passing from menu not supported\n");
 	}
 
 	/* Hope we fit. */
@@ -106,12 +113,14 @@ cmd_progthread(void *ptr, unsigned long nargs)
 
 	strcpy(progname, args[0]);
 	
-	result = runprogram(progname, menu_lock);
+	result = runprogram(progname, (userptr_t)args, nargs);
 	if (result) {
 		kprintf("Running program %s failed: %s\n", args[0],
 			strerror(result));
 		return;
 	}
+	
+	sys__exit(0);
 
 	/* NOTREACHED: runprogram only returns on error. */
 }
@@ -133,12 +142,15 @@ int
 common_prog(int nargs, char **args)
 {
 	int result;
-
+	(void)result;
+	pid_t pid;
+	(void)pid;
 #if OPT_SYNCHPROBS
 	kprintf("Warning: this probably won't work with a "
 		"synchronization-problems kernel.\n");
 #endif
 	
+<<<<<<< HEAD
 	pid_t pid = thread_fork_pid(args[0] /* thread name */,
 			cmd_progthread /* thread function */,
 			args /* thread arg */, nargs /* thread arg */,
@@ -153,6 +165,27 @@ common_prog(int nargs, char **args)
 		kprintf("thread_fork failed: %s\n", strerror(result));
 		return result;
 	}
+=======
+	
+	cmdpid = thread_fork_pid(args[0],
+		cmd_progthread,
+		args, nargs,
+		NULL);
+		
+	DEBUG(DB_KERN_MENU, "\nkernel: menu with pid #%d is running a command with forked pid #%d\n", curthread->t_pid, cmdpid);
+	DEBUG(DB_KERN_MENU, "\nkernel: menu waiting for forked pid #%d\n", cmdpid);
+
+	int *exitcode;
+	exitcode = kmalloc(sizeof(int));
+	
+	*exitcode = 0;
+	
+	sys_waitpid(cmdpid, 0, 0, exitcode);
+	
+	//while(1) { }
+	
+	DEBUG(DB_KERN_MENU, "\nkernel: forked pid #%d has exited, menu is now awake\n", cmdpid);
+>>>>>>> fspass
 	
 	/* This is a really ugly (although temporary) hack to prevent 
 	 * the kernel menu and /testbin/fileonlytest from competing for stdout. 
@@ -160,7 +193,13 @@ common_prog(int nargs, char **args)
 	 * waitpid() and exit() system calls are implemented.
 	 */ 
 	if(strlen(args[0]) == 21) {
-		clocksleep(5); 
+		//clocksleep(5); 
+	}
+	
+	//kprintf("running command with length %d\n",strlen(args[0]));
+	if(strlen(args[0]) == 17) {
+		//clocksleep(5);
+		//kprintf("\n(program name unknown): Complete.\n");
 	}
 
 	return 0;
@@ -627,7 +666,7 @@ cmd_dispatch(char *cmd)
 			getinterval(beforesecs, beforensecs,
 				    aftersecs, afternsecs,
 				    &secs, &nsecs);
-
+		
 			kprintf("Operation took %lu.%09lu seconds\n",
 				(unsigned long) secs,
 				(unsigned long) nsecs);
@@ -697,10 +736,24 @@ menu(char *args)
 	menu_execute(args, 1);
 
 	while (1) {
+<<<<<<< HEAD
 
+=======
+		/*if(process_table[cmdpid]->self != NULL && process_table[cmdpid]->self->t_state == S_RUN) {
+			command_running = true;
+		}
+		else {
+			command_running = false;
+		}*/
+		
+	//	if(!command_running) {
+>>>>>>> fspass
 			kprintf("OS/161 kernel [? for menu]: ");
+	//	}
 			kgets(buf, sizeof(buf));
 		
-		menu_execute(buf, 0);
+	//	if(!command_running) {
+			menu_execute(buf, 0);
+	//	}
 	}
 }

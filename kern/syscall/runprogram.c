@@ -45,23 +45,75 @@
 #include <vfs.h>
 #include <syscall.h>
 #include <test.h>
+#include <copyinout.h>
 
 /*
  * Load program "progname" and start running it in usermode.
- * Does not return except on error.
- *
- * Calls vfs_open on progname and thus may destroy it.
+ * Does not return except on error. Supports argument passing
+ * from the kernel menu.
  */
 int
-runprogram(char *progname, struct lock *menu_lock)
+runprogram(char *progname, userptr_t args, unsigned long nargs)
 {
 	struct vnode *v;
 	vaddr_t entrypoint, stackptr;
-	int result;
-	(void)menu_lock;
+	int result, argc, i, total_len, total_size, len, j;
+	char **kargs;
+	unsigned long count;
 	
+	kargs = (char **)args;
+	
+	/* Determine argument count. */
+	argc = 0;
+	total_len = 0;
+	count = 0;
+	
+	while(count < nargs) {
+		len = strlen(kargs[argc]) + 1;		// Add one, since strlen does not take into account NULL terminator.
+		len	= (len + 3) & ~(3);				// Round string length up to nearest multiple of 4.
+		total_len += len;					// Keep track of the total length, so we know how much space to allocate later.
+		argc++;
+		count++;
+	}
+	
+	/* Determine number of bytes to allocate for kernel buffer. */
+	total_size = total_len * sizeof(char);
+	
+	/* Copy in each argument one by one, making sure each string begins on boundaries that are evenly divisible by 4. */
+	char kargbuf[total_size];
+	int kargoffset[argc];
+	int ptr_index, upper;
+	size_t *actual;
+	char *ptr;
+
+	actual = kmalloc(sizeof(int));
+	if(actual == NULL) {
+		return -1;
+	}
+	
+	ptr_index = 0;
+	
+	for(i = 0; i < argc; i++) {
+		ptr = &kargbuf[ptr_index];                             // Create a pointer to the next free position in the kargbuf array.
+		
+		len = strlen(kargs[i]) + 1;                            // Determine the total length of the string, including NULL terminator.
+		strcpy(ptr,kargs[i]);                                  // Copy in the string.
+		
+		upper	= ( (len + ptr_index) + 3) & ~(3);             // Determine the next free index in kargbuf that is evenly divisible by 4.
+
+		for(j = ptr_index + len; j < upper; j++) {
+			kargbuf[j] = '\0';                                 // Pad slots that we left behind in the previous step with NULL characters.
+		}
+		
+		*actual = 0;                                           // Reset number of characters copied in to zero.
+		kargoffset[i] = ptr_index;                             // Store offset. Used to locate the beginning of the i'th argument in the array.
+		ptr_index = upper;                                     // Update pointer index to the next free slot evenly divisible by 4.
+	}
+	
+	kfree(actual);
+
 	/* Open the file. */
-	result = vfs_open(progname, O_RDONLY, 0, &v);
+	result = vfs_open((char *)progname, O_RDONLY, 0, &v);
 	if (result) {
 		return result;
 	}
@@ -99,11 +151,24 @@ runprogram(char *progname, struct lock *menu_lock)
 		/* thread_exit destroys curthread->t_addrspace */
 		return result;
 	}
+	
+	/* Push arguments array to the stack */
+	stackptr -= total_size;
+	copyout(&kargbuf[0], (userptr_t)stackptr, total_size);
+	
+	/* Push pointers to each argument in the array to the stack */ 
+	int base = stackptr;
+	int ptr_value;
+
+	for(i = argc - 1; i >= 0; i--) {
+		stackptr -= sizeof(void *);	                           // Decrement the stack pointer and free up space to store the pointer (which is 4 bytes in size on MIPS).
+		ptr_value = base + kargoffset[i];
+		copyout(&ptr_value, (userptr_t)stackptr, sizeof(void *));
+	}
 
 	/* Warp to user mode. */
-	enter_new_process(0 /*argc*/, NULL /*userspace addr of argv*/,
+	enter_new_process(argc-1 /*argc*/, (userptr_t)stackptr /*userspace addr of argv*/,
 			  stackptr, entrypoint);
-
 	
 	/* enter_new_process does not return. */
 	panic("enter_new_process returned\n");

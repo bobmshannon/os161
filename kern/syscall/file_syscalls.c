@@ -195,7 +195,11 @@ sys_write(int fd, const_userptr_t buf, size_t nbytes, int *errcode) {
 	}
 	
 	/* Error checking */
+<<<<<<< HEAD
 	if((fd < 0) || (fd >= OPEN_MAX) || (curthread->t_fd_table[fd]->vn == NULL)) {
+=======
+	if((fd < 0) || fd >= OPEN_MAX || (curthread->t_fd_table[fd]->vn == NULL) || (fd >= OPEN_MAX)) {
+>>>>>>> fspass
 		(*errcode) = EBADF;
 		return -1;
 	}
@@ -223,7 +227,11 @@ sys_write(int fd, const_userptr_t buf, size_t nbytes, int *errcode) {
 int
 sys_close(int fd, int *errcode) {
 	/* Error checking */
+<<<<<<< HEAD
 	if((fd < 0) || (fd >= OPEN_MAX) || (curthread->t_fd_table[fd]->vn == NULL)) {
+=======
+	if((fd < 0) || fd >= OPEN_MAX || (curthread->t_fd_table[fd]->vn == NULL) || (fd >= OPEN_MAX)) {
+>>>>>>> fspass
 		(*errcode) = EBADF;
 		return -1;
 	}
@@ -234,10 +242,7 @@ sys_close(int fd, int *errcode) {
 	
 	/* Re-open a slot in the file descriptor table */
 	if(curthread->t_fd_table[fd]->ref_count == 0) {
-		//lock_destroy(curthread->t_fd_table[fd]->lock);
 		curthread->t_fd_table[fd]->vn = NULL;
-		//kfree(curthread->t_fd_table[fd]->vn);
-		//kfree(curthread->t_fd_table[fd]);	
 	}
 	return 0;
 }
@@ -247,6 +252,7 @@ sys_dup2(int oldfd, int newfd, int *errcode) {
 	/* Error Checking */
 	if(oldfd == newfd) {
 		return newfd; 
+<<<<<<< HEAD
 	}
 	if((oldfd != newfd) && ((oldfd < 0) || (oldfd >= OPEN_MAX) || newfd < 0 || (newfd >= OPEN_MAX)) ) {
 		(*errcode) = EBADF;
@@ -257,11 +263,29 @@ sys_dup2(int oldfd, int newfd, int *errcode) {
 	}
 	else if((oldfd < 0) || (oldfd >= OPEN_MAX) || newfd < 0 || (newfd >= OPEN_MAX) || curthread->t_fd_table[newfd]->vn == NULL) {
 		(*errcode) = EBADF;
-		return -1;
+=======
 	}
 
+	if((oldfd != newfd) && ((oldfd < 0) || (oldfd >= OPEN_MAX) || newfd < 0 || (newfd >= OPEN_MAX)) ) {
+ 		(*errcode) = EBADF;
+>>>>>>> fspass
+		return -1;
+ 	}
+	
+	else if(oldfd == 0 && curthread->t_fd_table[newfd]->vn == NULL) {
+		
+	}
+
+<<<<<<< HEAD
 
 
+=======
+	else if((oldfd < 0) || (oldfd >= OPEN_MAX) || newfd < 0 || (newfd >= OPEN_MAX) || curthread->t_fd_table[newfd]->vn == NULL) {
+ 		(*errcode) = EBADF;
+ 		return -1;
+ 	}
+	
+>>>>>>> fspass
 	/* Close newfd if open */
 	if(curthread->t_fd_table[newfd]->vn != NULL){
 			sys_close(newfd, errcode);
@@ -275,7 +299,18 @@ sys_dup2(int oldfd, int newfd, int *errcode) {
 	curthread->t_fd_table[newfd]->ref_count = curthread->t_fd_table[oldfd]->ref_count;
 	curthread->t_fd_table[newfd]->offset = curthread->t_fd_table[oldfd]->offset;
 
+<<<<<<< HEAD
 	
+=======
+	curthread->t_fd_table[newfd]->vn = curthread->t_fd_table[oldfd]->vn;
+	curthread->t_fd_table[newfd]->lock = curthread->t_fd_table[oldfd]->lock;
+	curthread->t_fd_table[newfd]->writable = curthread->t_fd_table[oldfd]->writable;
+	curthread->t_fd_table[newfd]->readable = curthread->t_fd_table[oldfd]->readable;
+	curthread->t_fd_table[newfd]->flags = curthread->t_fd_table[oldfd]->flags;
+	curthread->t_fd_table[newfd]->ref_count = curthread->t_fd_table[oldfd]->ref_count;
+	curthread->t_fd_table[newfd]->offset = curthread->t_fd_table[oldfd]->offset;
+
+>>>>>>> fspass
 	return newfd;	
 }
 
@@ -343,11 +378,30 @@ sys_lseek(int fd, off_t pos, int whence, int *errcode) {
 	struct stat filestats;
 
 	/* Error Checking */
+<<<<<<< HEAD
 	if((fd < 0)  || (fd >= OPEN_MAX) || (curthread->t_fd_table[fd]->vn == NULL)) {
 		(*errcode) = EBADF;
 		return -1;
 	}
 
+=======
+	if((fd < 0) || fd >= OPEN_MAX || (curthread->t_fd_table[fd]->vn == NULL) || (fd >= OPEN_MAX)) {
+		(*errcode) = EBADF;
+		return -1;
+	}
+	
+	err = VOP_STAT(curthread->t_fd_table[fd]->vn, &filestats);
+	if(err) {
+		(*errcode) = err;
+		return -1;
+	}
+	
+	/* lseek is unsupported on devices. */
+	if(filestats.st_rdev > 0 && filestats.st_size == 0) {
+		(*errcode) = ESPIPE;
+	}
+	
+>>>>>>> fspass
 	/* Update seek position */
 	lock_acquire(curthread->t_fd_table[fd]->lock);
 	
@@ -382,7 +436,11 @@ sys_lseek(int fd, off_t pos, int whence, int *errcode) {
 	}
 	lock_release(curthread->t_fd_table[fd]->lock);
 	
+<<<<<<< HEAD
 	/* Out of bounds. */
+=======
+	/* Out of bounds. This is an illegal seek position. That's awkward. */
+>>>>>>> fspass
 	if(newpos < 0) {
 		(*errcode) = EINVAL;
 		return -1;

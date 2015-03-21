@@ -45,6 +45,7 @@
 #include <thread.h>
 #include <process.h>
 #include <kern/wait.h>
+<<<<<<< HEAD
 #include <wchan.h>
 #include <addrspace.h>
 #include <mips/trapframe.h>
@@ -136,11 +137,82 @@ sys__exit(int code) {
 	 * cases would be the parent who called fork. Thus, we
 	 * only decrement the waiting semaphore once.
 	 */
+=======
+#include <mips/trapframe.h>
+#include <addrspace.h>
+
+int 
+sys_waitpid(pid_t pid, userptr_t status, int options, int *errcode) {
+	int err;
+	(void)options;		// Not yet implemented, nor is it required to be
+						// for this class.
+	/* Error checking. */
+	if(pid < 0 || pid >= OPEN_MAX) {
+		DEBUG(DB_PROCESS_SYSCALL, "\n ERROR: pid #%d calling waitpid() on child process #%d, but process id is invalid\n", curthread->t_pid, pid);
+		(*errcode) = ESRCH;
+		return -1;
+	}
+	else if(pid == 0) {
+		DEBUG(DB_PROCESS_SYSCALL, "\n ERROR: pid #%d calling waitpid() on child process #0, but process is not their child\n", curthread->t_pid);
+		(*errcode) = EINVAL;
+		return -1;
+	}
+	else if(curthread->t_pid != process_table[pid]->ppid) {
+		DEBUG(DB_PROCESS_SYSCALL, "\n ERROR: pid #%d calling waitpid() on child process #%d, but process is not their child\n", curthread->t_pid, pid);
+		(*errcode) = ECHILD;
+		return -1;
+	}
+	
+	DEBUG(DB_PROCESS_SYSCALL, "\nprocess #%d waiting for pid #%d", curthread->t_pid, pid);
+	
+	if(process_table[pid]->has_exited) {
+		/* Skip P'ing the semaphore because the process has already exited 
+		 * and we do not need to wait. This will prevent a deadlock.
+		 */
+	}
+	else {
+		P(process_table[pid]->wait_sem);
+	}
+	
+	/* Send exit code back to waitpid caller. */
+	int *exitcode;
+	exitcode = kmalloc(sizeof(int));
+	if(exitcode == NULL) {
+		(*errcode) = EFAULT;
+		return -1;		
+	}
+	*exitcode = process_table[pid]->exitcode;
+	
+	err = copyout(exitcode, status, sizeof(int));
+	if(err) {
+		(*errcode) = EFAULT;
+		return -1;
+	}
+	
+	kfree(exitcode);
+	
+	DEBUG(DB_PROCESS_SYSCALL, "\nprocess #%d no longer waiting for pid #%d", curthread->t_pid, pid);
+	
+	/* Free up slot in process table. */
+	remove_process_entry(pid);
+	
+	return pid;
+}
+
+void
+sys__exit(int code) {
+	DEBUG(DB_PROCESS_SYSCALL, "\nkernel: pid #%d exiting...\n", sys_getpid());
+	pid_t pid = sys_getpid();
+	process_table[pid]->has_exited = true;
+	process_table[pid]->exitcode = _MKWAIT_EXIT(code);
+	
+>>>>>>> fspass
 	V(process_table[pid]->wait_sem);
 	
 	thread_exit();
 }
 
+<<<<<<< HEAD
 pid_t 
 sys_waitpid(pid_t pid, userptr_t status, int options, int *errcode) {
 	// TODO: handle options argument checking.
@@ -167,12 +239,39 @@ sys_waitpid(pid_t pid, userptr_t status, int options, int *errcode) {
 	
 	(void)status;
 	(void)options;
+=======
+int 
+menu_wait(pid_t pid) {
+	/* Error checking. */
+	if(pid < 0 || pid >= OPEN_MAX) {
+		return -1;
+	}
+	else if(pid == 0) {
+		return -1;
+	}
+	
+	P(process_table[pid]->wait_sem);
+	
+	/* Free up slot in process table. */
+	remove_process_entry(pid);
+	
+>>>>>>> fspass
 	return pid;
 }
 
 pid_t
+<<<<<<< HEAD
 sys_fork(struct trapframe *tf) {
 	struct thread **ret;		// (*newthread) is a pointer to the child.
+=======
+sys_getpid() {
+	return curthread->t_pid;
+}
+
+pid_t
+sys_fork(struct trapframe *tf, int *errcode) {
+	struct thread **ret;		// (*ret) is a pointer to the child.
+>>>>>>> fspass
 	struct addrspace **retaddr; // (*retaddr) is a pointer to address space copy.
 	
 	struct thread *newthread;
@@ -182,11 +281,19 @@ sys_fork(struct trapframe *tf) {
 	
 	/* Copy trapframe */
 	tf_child = kmalloc(sizeof(struct trapframe));
+<<<<<<< HEAD
+=======
+	if(tf_child == NULL) {
+		return -1;
+		*errcode = ENOMEM;	
+	}
+>>>>>>> fspass
 	memcpy(tf_child, tf, sizeof(struct trapframe));
 	
 	/* Call thread_fork */
 	err = thread_fork("forked pid", (void *)enter_forked_process, tf_child, dummy, ret);
 	if(err) {
+<<<<<<< HEAD
 		panic("thread_fork failed.");
 	}
 	newthread = *ret;
@@ -216,6 +323,158 @@ sys_fork(struct trapframe *tf) {
 	(void)i;
 	(void)retaddr;
 	return newthread->t_pid;
+=======
+		return -1;
+		*errcode = ENOMEM;
+	}
+	newthread = *ret;
+	
+	DEBUG(DB_PROCESS_SYSCALL, "\nprocess #%d calling fork(), new thread spawned with pid #%d\n", curthread->t_pid, newthread->t_pid);
+	
+	(void)i;
+	(void)retaddr;
+	*errcode = 0;
+	return newthread->t_pid;
+}
+
+void 
+enter_forked_process(struct trapframe *tf_child) {
+	struct trapframe tf;
+	
+	tf_child->tf_v0 = 0;
+	tf_child->tf_a0 = 0;
+	tf_child->tf_epc += 4;
+	
+	as_activate(curthread->t_addrspace);
+	
+	tf = *tf_child;
+	
+	DEBUG(DB_PROCESS_SYSCALL, "\nprocess #%d entering user mode\n", curthread->t_pid);
+	
+	mips_usermode(&tf);
+}
+
+int 
+sys_execv(userptr_t progname, userptr_t args, int *errcode)
+{
+	struct vnode *v;
+	vaddr_t entrypoint, stackptr;
+	int result, argc, i, total_len, total_size, len, err, j;
+	char **kargs;
+	
+	kargs = (char **)args;
+	argc = 0;
+	total_len = 0;
+	
+	(void)progname;
+	(void)args;
+	(void)errcode;
+	(void)argc;
+	(void)i;
+	
+	/* Determine argument count. */
+	while(kargs[argc] != NULL) {
+		len = strlen(kargs[argc]) + 1;		// Add one, since strlen does not take into account NULL terminator.
+		len	= (len + 3) & ~(3);				// Round string length up to nearest multiple of 4.
+		total_len += len;					// Keep track of the total length, so we know how much space to allocate later.
+		argc++;
+	}
+	
+	/* Determine number of bytes to allocate for kernel buffer. */
+	total_size = total_len * sizeof(char);
+	
+	/* Copy in each argument one by one, making sure each string begins on boundaries that are evenly divisible by 4. */
+	char kargbuf[total_size];
+	char kargoffset[argc];
+	int ptr_index, upper;
+	size_t *actual;
+	char *ptr;
+
+	actual = kmalloc(sizeof(int));
+	if(actual == NULL) {
+		// something went wrong, return error.
+	}
+	ptr_index = 0;
+	
+	for(i = 0; i < argc; i++) {
+		ptr = &kargbuf[ptr_index];										// Create a pointer to the next free position in the kargbuf array.
+		err = copyinstr((const_userptr_t)kargs[i], ptr,
+						strlen(kargs[i]), actual);						// Copy in the string.
+		upper	= ( (*actual + ptr_index - 1) + 3) & ~(3);				// Determine the next free index in kargbuf that is evenly divisible by 4.		
+
+		
+		for(j = ptr_index + *actual; j < upper; j++) {
+			kargbuf[j] = '\0';											// Pad slots that we left behind in the previous step with NULL characters.
+		}
+		
+		*actual = 0;													// Reset number of characters copied in to zero.
+		kargoffset[i] = ptr_index;										// Store offset. Used to locate the beginning of the i'th argument in the array.
+		ptr_index = upper;												// Update pointer index to the next free slot evenly divisible by 4.
+	}
+	
+	kfree(actual);
+
+	/*
+	char a[10];
+	char *x = a;
+	char *y = &a[0];
+	
+	copyinstr(const_userptr_t usersrc, char *dest, size_t len, size_t *actual)
+	*/
+
+	/* Open the file. */
+	result = vfs_open((char *)progname, O_RDONLY, 0, &v);
+	if (result) {
+		return result;
+	}
+
+	/* We should be a new thread. */
+	KASSERT(curthread->t_addrspace == NULL);
+
+	/* Create a new address space. */
+	curthread->t_addrspace = as_create();
+	if (curthread->t_addrspace==NULL) {
+		vfs_close(v);
+		return ENOMEM;
+	}
+	
+	/* File descriptor table. */
+	init_fd_table();
+
+	/* Activate it. */
+	as_activate(curthread->t_addrspace);
+
+	/* Load the executable. */
+	result = load_elf(v, &entrypoint);
+	if (result) {
+		/* thread_exit destroys curthread->t_addrspace */
+		vfs_close(v);
+		return result;
+	}
+
+	/* Done with the file now. */
+	vfs_close(v);
+
+	/* Define the user stack in the address space */
+	result = as_define_stack(curthread->t_addrspace, &stackptr);
+	if (result) {
+		/* thread_exit destroys curthread->t_addrspace */
+		return result;
+	}
+	
+	/* Copy arguments to the user stack. */
+	stackptr -= total_size;
+	copyout(&kargbuf, (userptr_t)stackptr, total_size);
+	
+	/* Warp to user mode. */
+	enter_new_process(0 /*argc*/, NULL /*userspace addr of argv*/,
+			  stackptr, entrypoint);
+	
+	/* enter_new_process does not return. */
+	panic("enter_new_process returned\n");
+	return EINVAL;
+
+>>>>>>> fspass
 }
 
 void 
