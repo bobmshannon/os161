@@ -64,11 +64,11 @@ sys_waitpid(pid_t pid, userptr_t status, int options, int *errcode) {
 		(*errcode) = EINVAL;
 		return -1;
 	}
-	else if(curthread->t_pid != process_table[pid]->ppid) {
+	/*else if(curthread->t_pid != process_table[pid]->ppid) {
 		DEBUG(DB_PROCESS_SYSCALL, "\n ERROR: pid #%d calling waitpid() on child process #%d, but process is not their child\n", curthread->t_pid, pid);
 		(*errcode) = ECHILD;
 		return -1;
-	}
+	}*/
 	
 	DEBUG(DB_PROCESS_SYSCALL, "\nprocess #%d waiting for pid #%d", curthread->t_pid, pid);
 	
@@ -195,122 +195,27 @@ enter_forked_process(struct trapframe *tf_child) {
 int 
 sys_execv(userptr_t progname, userptr_t args, int *errcode)
 {
-	struct vnode *v;
-	vaddr_t entrypoint, stackptr;
-	int result, argc, i, total_len, total_size, len, err, j;
-	char **kargs;
-	
-	kargs = (char **)args;
-	argc = 0;
-	total_len = 0;
-	
+	size_t bytescopied;
+	char dest[PATH_MAX + 1];
+	int err;
+
 	(void)progname;
 	(void)args;
 	(void)errcode;
-	(void)argc;
-	(void)i;
 	
-	/* Determine argument count. */
-	while(kargs[argc] != NULL) {
-		len = strlen(kargs[argc]) + 1;		// Add one, since strlen does not take into account NULL terminator.
-		len	= (len + 3) & ~(3);				// Round string length up to nearest multiple of 4.
-		total_len += len;					// Keep track of the total length, so we know how much space to allocate later.
-		argc++;
+	/* Error checking. */
+	err = copyinstr(progname, dest, PATH_MAX, &bytescopied);
+	if(err != 0) {
+		(*errcode) = EFAULT;
+		return -1;
 	}
 	
-	/* Determine number of bytes to allocate for kernel buffer. */
-	total_size = total_len * sizeof(char);
-	
-	/* Copy in each argument one by one, making sure each string begins on boundaries that are evenly divisible by 4. */
-	char kargbuf[total_size];
-	char kargoffset[argc];
-	int ptr_index, upper;
-	size_t *actual;
-	char *ptr;
-
-	actual = kmalloc(sizeof(int));
-	if(actual == NULL) {
-		// something went wrong, return error.
-	}
-	ptr_index = 0;
-	
-	for(i = 0; i < argc; i++) {
-		ptr = &kargbuf[ptr_index];										// Create a pointer to the next free position in the kargbuf array.
-		err = copyinstr((const_userptr_t)kargs[i], ptr,
-						strlen(kargs[i]), actual);						// Copy in the string.
-		upper	= ( (*actual + ptr_index - 1) + 3) & ~(3);				// Determine the next free index in kargbuf that is evenly divisible by 4.		
-
-		
-		for(j = ptr_index + *actual; j < upper; j++) {
-			kargbuf[j] = '\0';											// Pad slots that we left behind in the previous step with NULL characters.
-		}
-		
-		*actual = 0;													// Reset number of characters copied in to zero.
-		kargoffset[i] = ptr_index;										// Store offset. Used to locate the beginning of the i'th argument in the array.
-		ptr_index = upper;												// Update pointer index to the next free slot evenly divisible by 4.
+	err = copyinstr(args, dest, PATH_MAX, &bytescopied);
+	if(err != 0) {
+		(*errcode) = EFAULT;
+		return -1;
 	}
 	
-	kfree(actual);
-
-	/*
-	char a[10];
-	char *x = a;
-	char *y = &a[0];
-	
-	copyinstr(const_userptr_t usersrc, char *dest, size_t len, size_t *actual)
-	*/
-
-	/* Open the file. */
-	result = vfs_open((char *)progname, O_RDONLY, 0, &v);
-	if (result) {
-		return result;
-	}
-
-	/* We should be a new thread. */
-	KASSERT(curthread->t_addrspace == NULL);
-
-	/* Create a new address space. */
-	curthread->t_addrspace = as_create();
-	if (curthread->t_addrspace==NULL) {
-		vfs_close(v);
-		return ENOMEM;
-	}
-	
-	/* File descriptor table. */
-	init_fd_table();
-
-	/* Activate it. */
-	as_activate(curthread->t_addrspace);
-
-	/* Load the executable. */
-	result = load_elf(v, &entrypoint);
-	if (result) {
-		/* thread_exit destroys curthread->t_addrspace */
-		vfs_close(v);
-		return result;
-	}
-
-	/* Done with the file now. */
-	vfs_close(v);
-
-	/* Define the user stack in the address space */
-	result = as_define_stack(curthread->t_addrspace, &stackptr);
-	if (result) {
-		/* thread_exit destroys curthread->t_addrspace */
-		return result;
-	}
-	
-	/* Copy arguments to the user stack. */
-	stackptr -= total_size;
-	copyout(&kargbuf, (userptr_t)stackptr, total_size);
-	
-	/* Warp to user mode. */
-	enter_new_process(0 /*argc*/, NULL /*userspace addr of argv*/,
-			  stackptr, entrypoint);
-	
-	/* enter_new_process does not return. */
-	panic("enter_new_process returned\n");
-	return EINVAL;
-
+	return 0;
 }
 
