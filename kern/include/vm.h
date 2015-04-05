@@ -30,12 +30,31 @@
 #ifndef _VM_H_
 #define _VM_H_
 
+/* Define a default page size of 4KB */
+#define PAGE_SIZE 4096
+
+/* Convert page number to coremap index */
+#define PAGE_INDEX(x) (x*PAGE_SIZE)
 /*
  * VM system-related definitions.
- *
- * You'll probably want to add stuff here.
  */
+ 
+/* Coremap entry */
+struct coremap_entry {
+	int cpuid;
+	int state;
+	bool referenced;
+	bool is_free;
+	bool is_permanent;
+	paddr_t pbase;
+	vaddr_t vbase;
+};
 
+/* Coremap structure */
+struct coremap_entry *coremap;
+
+/* Number of pages allocated */
+int npages;
 
 #include <machine/vm.h>
 
@@ -57,7 +76,7 @@ void free_kpages(vaddr_t addr);
 
 /* TLB shootdown handling called from interprocessor_interrupt */
 void vm_tlbshootdown_all(void);
-void vm_tlbshootdown(const struct tlbshootdown *);
+void vm_tlbshootdown(const struct tlbshootdown *t);
 
 
 #endif /* _VM_H_ */
