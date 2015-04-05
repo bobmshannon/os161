@@ -33,8 +33,6 @@
 /* Define a default page size of 4KB */
 #define PAGE_SIZE 4096
 
-/* Convert page number to coremap index */
-#define PAGE_INDEX(x) (x*PAGE_SIZE)
 /*
  * VM system-related definitions.
  */
