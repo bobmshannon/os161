@@ -44,6 +44,7 @@ struct coremap_entry {
 	bool referenced;
 	bool is_free;
 	bool is_permanent;
+	bool is_last;
 	paddr_t pbase;
 	vaddr_t vbase;
 };
