@@ -78,6 +78,11 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
 }
 
 vaddr_t alloc_kpages(int n) {
+	(void)n;
+}
+
+/*
+vaddr_t alloc_kpages(int n) {
 	int i, start, end, match;
 	
 	KASSERT(n > 0);
@@ -116,11 +121,11 @@ vaddr_t alloc_kpages(int n) {
 		if(i == end) {
 			coremap[i].is_last = true;
 		}
-		/* modify additional fields where necessary here */
+		// modify additional fields where necessary here 
 	}
 	
 	return coremap[start].vbase;
-}
+}*/
 
 void free_kpages(vaddr_t addr) {
 	(void)addr;
