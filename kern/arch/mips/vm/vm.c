@@ -45,7 +45,7 @@ static struct spinlock stealmem_lock = SPINLOCK_INITIALIZER;
 
 void vm_bootstrap() {
 	paddr_t lo, hi, free, i;
-	int npages, j;
+	int j;
 
 	/* Determine number of pages to allocate */
 	ram_getsize(&lo, &hi);
@@ -60,9 +60,9 @@ void vm_bootstrap() {
 	 * The rest of the free memory is used to store each page.
 	 */
 	coremap = (struct coremap_entry *)PADDR_TO_KVADDR(lo);
-	free = lo + npages * sizeof(struct coremap_entry);
-	free = ROUNDUP(free, PAGE_SIZE);
-	npages -= (ROUNDUP(free, PAGE_SIZE) - lo) / PAGE_SIZE;		/* subtract number of page(s) coremap takes up */
+	free = lo + npages * sizeof(struct coremap_entry);			/* pointer to free memory  */
+	free = ROUNDUP(free, PAGE_SIZE);                            /* make sure coremap takes up a whole page or more */
+	npages -= (ROUNDUP(free, PAGE_SIZE) - lo) / PAGE_SIZE;		/* subtract number of page(s) taken up from coremap */
 	
 	/* Initialize each page in the coremap */
 	for(j = 0; j < npages; j++) {
@@ -96,6 +96,7 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
 
 vaddr_t alloc_kpages(int n) {
 	int i, start, end, match;
+	(void)match;
 	
 	KASSERT(n > 0);
 	
@@ -103,8 +104,17 @@ vaddr_t alloc_kpages(int n) {
 		return PADDR_TO_KVADDR(getppages(n));
 	}
 	
-	/* Find a chunk of N contiguous pages to allocate */
-	for(i = 0; i < n; i++) {
+	/* This will only be able to allocate a single page. For debugging. */
+	for(i = 0; i < npages; i++) {
+		if(coremap[i].is_free) {
+			start = i;
+			end = i;
+			break;
+		}
+	}
+	
+	/* Find a chunk of N contiguous pages to allocate 
+	for(i = 0; i < npages; i++) {
 		if(coremap[i].is_free && match == 0) {
 			start = i;
 			match++;
@@ -129,7 +139,7 @@ vaddr_t alloc_kpages(int n) {
 		if(match != n && i == npages-1) {
 			panic("could not allocate a contiguous block of %d pages", n);
 		}
-	}
+	}*/
 	
 	/* Update the state of the allocated page(s) before returning them */ 
 	for(i = start; i <= end; i++) {
