@@ -42,10 +42,9 @@
  * Wrap rma_stealmem in a spinlock.
  */
 static struct spinlock stealmem_lock = SPINLOCK_INITIALIZER;
-static int npages;
 
 void vm_bootstrap() {
-	paddr_t lo, hi, free, i;
+	paddr_t lo, hi, free;
 	int j;
 
 	/* Determine number of pages to allocate */
@@ -110,7 +109,7 @@ vaddr_t alloc_kpages(int n) {
 		}
 	}
 	
-	/* Find a chunk of N contiguous pages to allocate 
+	/* Find a chunk of N contiguous pages to allocate */
 	for(i = 0; i < npages; i++) {
 		if(coremap[i].is_free && match == 0) {
 			start = i;
@@ -136,7 +135,7 @@ vaddr_t alloc_kpages(int n) {
 		if(match != n && i == npages-1) {
 			panic("could not allocate a contiguous block of %d pages", n);
 		}
-	}*/
+	}
 	
 	/* Update the state of the allocated page(s) before returning them */ 
 	for(i = start; i <= end; i++) {
