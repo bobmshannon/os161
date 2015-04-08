@@ -59,7 +59,7 @@ void vm_bootstrap() {
 	coremap = (struct coremap_entry *)PADDR_TO_KVADDR(lo);
 	free = lo + npages * sizeof(struct coremap_entry);			/* pointer to free memory  */
 	free = ROUNDUP(free, PAGE_SIZE);                            /* make sure coremap takes up a whole page or more */
-	npages -= (ROUNDUP(free, PAGE_SIZE) - lo) / PAGE_SIZE;		/* subtract number of page(s) taken up from coremap */
+	npages -= (free - lo) / PAGE_SIZE;		/* subtract number of page(s) taken up from coremap */
 	
 	/* Initialize each page in the coremap */
 	for(j = 0; j < npages; j++) {
