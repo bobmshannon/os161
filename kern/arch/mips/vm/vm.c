@@ -42,10 +42,11 @@
  * Wrap rma_stealmem in a spinlock.
  */
 static struct spinlock stealmem_lock = SPINLOCK_INITIALIZER;
+static int npages;
 
 void vm_bootstrap() {
 	paddr_t lo, hi, free, i;
-	int npages, j;
+	int j;
 
 	/* Determine number of pages to allocate */
 	ram_getsize(&lo, &hi);
@@ -54,6 +55,13 @@ void vm_bootstrap() {
 			npages++;
 	}
 	npages--;
+	
+	/*
+	ram_getsize(&lo, &hi);
+	
+	npages = (hi - lo) / PAGE_SIZE;
+	
+	*/
 	
 	/* Allocate the coremap.
 	 * (npages * sizeof(struct coremap_entry)) bytes is allocated for the coremap it self.
@@ -147,6 +155,14 @@ vaddr_t alloc_kpages(int n) {
 
 void free_kpages(vaddr_t addr) {
 	(void)addr;
+	int i;
+	
+	for(i = 0; i < npages; i++){
+		if(coremap[i].vbase == addr){
+			coremap[i].is_free = true;			
+		}
+	}
+	
 }
 
 void vm_tlbshootdown_all(void) {
