@@ -50,18 +50,13 @@ void vm_bootstrap() {
 
 	/* Determine number of pages to allocate */
 	ram_getsize(&lo, &hi);
-
-	for(i = lo; i < hi; i += PAGE_SIZE) {
-			npages++;
-	}
-	npages--;
 	
-	/*
+	
 	ram_getsize(&lo, &hi);
 	
 	npages = (hi - lo) / PAGE_SIZE;
 	
-	*/
+	
 	
 	/* Allocate the coremap.
 	 * (npages * sizeof(struct coremap_entry)) bytes is allocated for the coremap it self.
@@ -104,7 +99,7 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
 
 vaddr_t alloc_kpages(int n) {
 	int i, start, end, match;
-	(void)match;
+	match = 0;
 	
 	KASSERT(n > 0);
 	
@@ -134,7 +129,7 @@ vaddr_t alloc_kpages(int n) {
 		}
 		if(coremap[i].is_free && match != n) {
 			match++;
-			if(npages == match) {
+			if(n == match) {
 				end = i;
 				break;
 			}
