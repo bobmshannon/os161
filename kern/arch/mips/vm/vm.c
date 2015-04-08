@@ -145,21 +145,32 @@ vaddr_t alloc_kpages(int n) {
 		if(i == end) {
 			coremap[i].is_last = true;
 		}
+		zero_page(coremap[i].vbase);
 		// modify additional fields where necessary here 
 	}
 	
 	return coremap[start].vbase;
 }
 
+void zero_page(vaddr_t vaddr) {
+	int i;
+	char *ptr;
+	ptr = (char *)vaddr;
+	for(i = 0; i < PAGE_SIZE; i++) {
+		*(ptr+i) = 0;
+	}
+}
+
 void free_kpages(vaddr_t addr) {
 	(void)addr;
-	int i;
+	/*int i;
+	
 	
 	for(i = 0; i < npages; i++){
 		if(coremap[i].vbase == addr){
 			coremap[i].is_free = true;			
 		}
-	}
+	}*/
 	
 }
 
