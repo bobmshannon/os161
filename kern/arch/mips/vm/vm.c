@@ -49,14 +49,8 @@ void vm_bootstrap() {
 	int j;
 
 	/* Determine number of pages to allocate */
-	ram_getsize(&lo, &hi);
-	
-	
-	ram_getsize(&lo, &hi);
-	
-	npages = (hi - lo) / PAGE_SIZE;
-	
-	
+	ram_getsize(&lo, &hi);	
+	npages = (hi - lo) / PAGE_SIZE;	
 	
 	/* Allocate the coremap.
 	 * (npages * sizeof(struct coremap_entry)) bytes is allocated for the coremap it self.
