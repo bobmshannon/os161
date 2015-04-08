@@ -38,18 +38,22 @@
 #include <addrspace.h>
 #include <vm.h>
 
+/*
+ * Wrap rma_stealmem in a spinlock.
+ */
+static struct spinlock stealmem_lock = SPINLOCK_INITIALIZER;
+
 void vm_bootstrap() {
-	paddr_t lo, hi, i, free;
+	paddr_t lo, hi, free, i;
 	int npages, j;
-	
+
 	/* Determine number of pages to allocate */
-	npages = 0;
 	ram_getsize(&lo, &hi);
-	for(i = 0; i < hi - lo; i += PAGE_SIZE) {
-		if(i < hi - lo) {
+
+	for(i = lo; i < hi; i += PAGE_SIZE) {
 			npages++;
-		}
 	}
+	npages--;
 	
 	/* Allocate the coremap.
 	 * (npages * sizeof(struct coremap_entry)) bytes is allocated for the coremap it self.
@@ -57,6 +61,8 @@ void vm_bootstrap() {
 	 */
 	coremap = (struct coremap_entry *)PADDR_TO_KVADDR(lo);
 	free = lo + npages * sizeof(struct coremap_entry);
+	free = ROUNDUP(free, PAGE_SIZE);
+	npages -= (ROUNDUP(free, PAGE_SIZE) - lo) / PAGE_SIZE;		/* subtract number of page(s) coremap takes up */
 	
 	/* Initialize each page in the coremap */
 	for(j = 0; j < npages; j++) {
@@ -69,6 +75,17 @@ void vm_bootstrap() {
 		coremap[j].is_last = false;
 		free += PAGE_SIZE;
 	}
+	
+	vm_bootstrapped = true;
+}
+
+static paddr_t getppages(unsigned long npages)
+{
+	paddr_t addr;
+	spinlock_acquire(&stealmem_lock);
+	addr = ram_stealmem(npages);
+	spinlock_release(&stealmem_lock);
+	return addr;
 }
 	
 int vm_fault(int faulttype, vaddr_t faultaddress) {
@@ -78,15 +95,15 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
 }
 
 vaddr_t alloc_kpages(int n) {
-	(void)n;
-}
-
-/*
-vaddr_t alloc_kpages(int n) {
 	int i, start, end, match;
 	
 	KASSERT(n > 0);
 	
+	if(!vm_bootstrapped) {
+		return PADDR_TO_KVADDR(getppages(n));
+	}
+	
+	/* Find a chunk of N contiguous pages to allocate */
 	for(i = 0; i < n; i++) {
 		if(coremap[i].is_free && match == 0) {
 			start = i;
@@ -114,6 +131,7 @@ vaddr_t alloc_kpages(int n) {
 		}
 	}
 	
+	/* Update the state of the allocated page(s) before returning them */ 
 	for(i = start; i <= end; i++) {
 		coremap[i].is_free = false;
 		coremap[i].referenced = true;
@@ -125,7 +143,7 @@ vaddr_t alloc_kpages(int n) {
 	}
 	
 	return coremap[start].vbase;
-}*/
+}
 
 void free_kpages(vaddr_t addr) {
 	(void)addr;

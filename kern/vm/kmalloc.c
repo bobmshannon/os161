@@ -35,8 +35,6 @@
 /*
  * Kernel malloc.
  */
-
-
 static
 void
 fill_deadbeef(void *vptr, size_t len)

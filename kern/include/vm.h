@@ -55,6 +55,9 @@ struct coremap_entry *coremap;
 /* Number of pages allocated */
 int npages;
 
+/* Is the VM system bootstrapped? */
+bool vm_bootstrapped;
+
 #include <machine/vm.h>
 
 /* Fault-type arguments to vm_fault() */

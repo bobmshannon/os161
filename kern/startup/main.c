@@ -117,7 +117,6 @@ boot(void)
 
 	/* Early initialization. */
 	ram_bootstrap();
-	vm_bootstrap();
 	thread_bootstrap();
 	hardclock_bootstrap();
 	vfs_bootstrap();
@@ -132,6 +131,7 @@ boot(void)
 	kprintf("\n");
 
 	/* Late phase of initialization. */
+	vm_bootstrap();
 	kprintf_bootstrap();
 	thread_start_cpus();
 
