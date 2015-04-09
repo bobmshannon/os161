@@ -38,11 +38,21 @@
 #include <addrspace.h>
 #include <vm.h>
 
-/*
- * Wrap rma_stealmem in a spinlock.
- */
+/* Wrap rma_stealmem in a spinlock. */
 static struct spinlock stealmem_lock = SPINLOCK_INITIALIZER;
 
+/* Declare static helper functions. */
+static void init_coremap_entry(int index, paddr_t pbase);
+static void zero_page(vaddr_t ptr);
+static int get_coremap_index(vaddr_t ptr);
+
+/*
+ * Bootstrap OS/161 virtual memory system.
+ *
+ * Allocates and initializes the coremap, in additional
+ * to calculating the number of pages we can fit in physical
+ * memory.
+ */
 void vm_bootstrap() {
 	paddr_t lo, hi, free;
 	int j;
@@ -51,30 +61,42 @@ void vm_bootstrap() {
 	ram_getsize(&lo, &hi);	
 	npages = (hi - lo) / PAGE_SIZE;	
 	
-	/* Allocate the coremap.
-	 * (npages * sizeof(struct coremap_entry)) bytes is allocated for the coremap it self.
-	 * The rest of the free memory is used to store each page.
+	/* 
+	 * Allocate the coremap. (npages * sizeof(struct coremap_entry)) bytes 
+	 * is allocated for the coremap it self. The rest of the free memory is 
+	 * used to store each page.
 	 */
 	coremap = (struct coremap_entry *)PADDR_TO_KVADDR(lo);
 	free = lo + npages * sizeof(struct coremap_entry);			/* pointer to free memory  */
 	free = ROUNDUP(free, PAGE_SIZE);                            /* make sure coremap takes up a whole page or more */
-	npages -= (free - lo) / PAGE_SIZE;		/* subtract number of page(s) taken up from coremap */
+	free_start = free;                                          /* update global VM field */
+	npages -= (free - lo) / PAGE_SIZE;		                    /* subtract number of page(s) taken up from coremap */
 	
 	/* Initialize each page in the coremap */
 	for(j = 0; j < npages; j++) {
-		coremap[j].is_free = true;
-		coremap[j].referenced = false;
-		coremap[j].vbase = PADDR_TO_KVADDR(free);
-		coremap[j].pbase = free;
-		coremap[j].cpuid = -1;
-		coremap[j].is_permanent = false;
-		coremap[j].is_last = false;
+		init_coremap_entry(j, free);
 		free += PAGE_SIZE;
 	}
 	
 	vm_bootstrapped = true;
 }
 
+static void init_coremap_entry(int index, paddr_t pbase) {
+		coremap[index].is_free = true;
+		coremap[index].referenced = false;
+		coremap[index].vbase = PADDR_TO_KVADDR(pbase);
+		coremap[index].pbase = pbase;
+		coremap[index].cpuid = -1;
+		coremap[index].is_permanent = false;
+		coremap[index].is_last = false;
+}
+
+/*
+ * Steal a single 4K page of memory.
+ *
+ * Used to allocate a page of memory before the VM system
+ * is bootstrapped.
+ */
 static paddr_t getppages(unsigned long npages)
 {
 	paddr_t addr;
@@ -83,13 +105,14 @@ static paddr_t getppages(unsigned long npages)
 	spinlock_release(&stealmem_lock);
 	return addr;
 }
-	
-int vm_fault(int faulttype, vaddr_t faultaddress) {
-	(void)faulttype;
-	(void)faultaddress;
-	return 0;
-}
 
+/*
+ * Allocate a contigous chunk of N kernel pages.
+ *
+ * A page being marked as a kernel page indicates that itoa
+ * cannot be swapped out. Thus, kernel pages must be allocated
+ * in contiguous chunks.
+ */
 vaddr_t alloc_kpages(int n) {
 	int i, start, end, match;
 	match = 0;
@@ -98,15 +121,6 @@ vaddr_t alloc_kpages(int n) {
 	
 	if(!vm_bootstrapped) {
 		return PADDR_TO_KVADDR(getppages(n));
-	}
-	
-	/* This will only be able to allocate a single page. For debugging. */
-	for(i = 0; i < npages; i++) {
-		if(coremap[i].is_free) {
-			start = i;
-			end = i;
-			break;
-		}
 	}
 	
 	/* Find a chunk of N contiguous pages to allocate */
@@ -152,7 +166,7 @@ vaddr_t alloc_kpages(int n) {
 	return coremap[start].vbase;
 }
 
-void zero_page(vaddr_t vaddr) {
+static void zero_page(vaddr_t vaddr) {
 	int i;
 	char *ptr;
 	ptr = (char *)vaddr;
@@ -161,17 +175,56 @@ void zero_page(vaddr_t vaddr) {
 	}
 }
 
-void free_kpages(vaddr_t addr) {
-	(void)addr;
-	/*int i;
+/*
+ * Free a contiguous chunk of kernel pages.
+ */
+void free_kpages(vaddr_t vaddr) {
+	int index;
 	
+	index = get_coremap_index(vaddr);
 	
-	for(i = 0; i < npages; i++){
-		if(coremap[i].vbase == addr){
-			coremap[i].is_free = true;			
+	if(index == -1) {
+		return;
+	}
+	
+	while(!coremap[index].is_last) {
+		coremap[index].state = -1;
+		coremap[index].referenced = false;
+		coremap[index].is_free = true;
+		coremap[index].is_permanent = false;
+		coremap[index].is_last = false;
+		// modify additional fields here where necessary
+		
+		index++;
+		
+		if(coremap[index].is_last) {
+			coremap[index].state = -1;
+			coremap[index].referenced = false;
+			coremap[index].is_free = true;
+			coremap[index].is_permanent = false;
+			coremap[index].is_last = false;	
+			// modify additional fields here where necessary
 		}
-	}*/
+	}
+}
+
+static int get_coremap_index(vaddr_t ptr) {
+	int i;
 	
+	for(i = 0; i < npages; i++) {
+		if(coremap[i].vbase == ptr) {
+			return i;
+		}
+	}
+	
+	DEBUG(DB_VM, "could not find a coremap entry corresponding to virtual address 0x%08x while freeing page \n", ptr);
+	return -1;
+}
+	
+int vm_fault(int faulttype, vaddr_t faultaddress) {
+	(void)faulttype;
+	(void)faultaddress;
+	return 0;
 }
 
 void vm_tlbshootdown_all(void) {

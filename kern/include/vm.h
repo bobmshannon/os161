@@ -52,11 +52,10 @@ struct coremap_entry {
 /* Coremap structure */
 struct coremap_entry *coremap;
 
-/* Number of pages allocated */
-int npages;
-
-/* Is the VM system bootstrapped? */
-bool vm_bootstrapped;
+/* Global VM system fields */
+int npages;                          /* Number of pages available on system. */
+bool vm_bootstrapped;                /* Is the VM system bootstrapped? */
+paddr_t free_start;                  /* Pointer to first page's location in physical memory */
 
 #include <machine/vm.h>
 
@@ -75,7 +74,6 @@ int vm_fault(int faulttype, vaddr_t faultaddress);
 /* Allocate/free kernel heap pages (called by kmalloc/kfree) */
 vaddr_t alloc_kpages(int npages);
 void free_kpages(vaddr_t addr);
-void zero_page(vaddr_t ptr);
 
 /* TLB shootdown handling called from interprocessor_interrupt */
 void vm_tlbshootdown_all(void);

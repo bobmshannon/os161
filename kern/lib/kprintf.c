@@ -41,6 +41,7 @@
 
 /* Flags word for DEBUG() macro. */
 //uint32_t dbflags = DB_PROCESS_SYSCALL | DB_KERN_MENU;
+//uint32_t dbflags = DB_VM;
 uint32_t dbflags = 0;
 
 /* Lock for non-polled kprintfs */
