@@ -184,7 +184,7 @@ void free_kpages(vaddr_t vaddr) {
 	index = get_coremap_index(vaddr);
 	
 	if(index == -1) {
-		return;
+		return;                    /* An invalid vaddr was passed in, exit. */
 	}
 	
 	while(!coremap[index].is_last) {
