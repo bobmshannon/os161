@@ -183,6 +183,7 @@ void free_kpages(vaddr_t vaddr) {
 	
 	index = get_coremap_index(vaddr);
 	start = index;
+	end = index;
 	
 	if(index == -1) {
 		return;                    /* An invalid vaddr was passed in, exit. */
