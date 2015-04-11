@@ -79,6 +79,12 @@ struct page_table_entry {
 	struct coremap_entry *page;
 };
 
+struct regionspace{ /* This is the region that will be set up by as_define_region() */
+	vaddr_t vaddr;
+	paddr_t paddr;
+	size_t npages;
+};
+
 /*
  * Functions in addrspace.c:
  *
