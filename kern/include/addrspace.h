@@ -58,12 +58,11 @@ struct addrspace {
         size_t as_npages2;
         paddr_t as_stackpbase;
 #else
-        struct page_table *pages;   /* Page table */
+    struct page_table *pages;   /* Page table */
 	struct page *heap_page;		/* Page mapped to heap region */
 	vaddr_t heap_break;			/* Heap break point */
 	vaddr_t heap_max;			/* Max heap break point */
 	int permissions;			/* Permission flags */
-	struct regionspace *region; 
 #endif
 };
 
@@ -80,11 +79,7 @@ struct page_table_entry {
 	struct coremap_entry *page;
 };
 
-struct regionspace{ /* This is the region that will be set up by as_define_region() */
-	vaddr_t vaddr;
-	paddr_t paddr;
-	size_t npages;
-};
+struct page_table_entry *add_entry(struct coremap_entry *page);
 
 /*
  * Functions in addrspace.c:

@@ -159,9 +159,7 @@ as_prepare_load(struct addrspace *as)
 	/*
 	 * Write this.
 	 */
-	 
 	 /*
-	 
 	 struct regionspace *region;
 	 size_t i;
 	 struct page_table_entry *pagei;
@@ -178,9 +176,7 @@ as_prepare_load(struct addrspace *as)
 	 		as -> pages = (struct page_table_entry *)kmalloc(sizeof(struct page_table_entry));
 	 	}
 	 }
-	 
-	 */
-
+*/
 	(void)as;
 	return 0;
 }

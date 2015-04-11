@@ -219,6 +219,48 @@ static int get_coremap_index(vaddr_t ptr) {
 	DEBUG(DB_VM, "could not find a coremap entry corresponding to virtual address 0x%08x while freeing page \n", ptr);
 	return -1;
 }
+
+/*
+ * Allocate single page in the coremap.
+ * Upon successful allocation, returns an index to the new page 
+ * in the coremap. Otherwise returns -1.
+ */
+ int alloc_page(void) {
+	int i;
+	
+	for(i = 0; i < npages; i++) {
+		if(coremap[i].is_free) {
+			coremap[i].is_free = false;
+			coremap[i].referenced = true;
+			coremap[i].is_permanent = false;
+			coremap[i].is_last = true;
+			zero_page(coremap[i].vbase);
+			// modify additional fields here where necessary
+			return i;
+		}
+	}
+	
+	return -1;
+ }
+ 
+ /*
+ * Free single page in the coremap.
+ * Do not use this to free kernel pages that have been allocated
+ * in a chunk, otherwise it will corrupt it. Use free_kpages instead.
+ */
+void free_page(vaddr_t addr) {
+			int i = get_coremap_index(addr);
+			
+			if(i == -1) {
+				return ;			/* Not a valid page. */
+			}
+			
+			coremap[i].is_free = true;
+			coremap[i].referenced = false;
+			coremap[i].is_permanent = false;
+			coremap[i].is_last = false;
+			// modify additional fields here where necessary	
+}
 	
 int vm_fault(int faulttype, vaddr_t faultaddress) {
 	(void)faulttype;

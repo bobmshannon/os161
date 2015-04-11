@@ -39,16 +39,20 @@
  
 /* Coremap entry */
 struct coremap_entry {
-	int cpuid;
-	int state;
-	bool referenced;
-	paddr_t pbase;
-	vaddr_t vbase;
-	bool is_free;
-	bool is_permanent;
-	bool is_last;
-	vaddr_t as_vbase;
-	off_t as_voffset;
+	/* Page Management */
+	bool referenced;                /* Is this page referenced? */
+	paddr_t pbase;					/* Base physical address of page */
+	vaddr_t vbase;					/* Base virtual address of page */
+	bool is_free;					/* Is the page free? */
+	bool is_permanent;				/* Can the page be swapped out? */
+	bool is_last;					/* Is the page the last one in a chunk? */
+	
+	/* TLB Management Fields */
+	struct addrspace *as;			/* Corresponding address space that page belongs to */
+	vaddr_t as_vbase;				/* Base virtual address in address space */
+	off_t as_voffset;				/* Virtual address offset */
+	int cpuid;						/* CPU where TLB entry resides */
+	int state;                      /* Current state of page (dirty, clean, etc.) */
 };
 
 /* Coremap structure */
@@ -73,9 +77,14 @@ void vm_bootstrap(void);
 /* Fault handling function called by trap code */
 int vm_fault(int faulttype, vaddr_t faultaddress);
 
-/* Allocate/free kernel heap pages (called by kmalloc/kfree) */
+/* Allocate/free kernel pages (called by kmalloc/kfree) */
 vaddr_t alloc_kpages(int npages);
 void free_kpages(vaddr_t addr);
+
+/* Allocate/free user pages */
+int alloc_page(void);
+void free_page(vaddr_t addr);
+
 
 /* TLB shootdown handling called from interprocessor_interrupt */
 void vm_tlbshootdown_all(void);
