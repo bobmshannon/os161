@@ -59,10 +59,11 @@ struct addrspace {
         paddr_t as_stackpbase;
 #else
         struct page_table *pages;   /* Page table */
-		struct page *heap_page;		/* Page mapped to heap region */
-		vaddr_t heap_break;			/* Heap break point */
-		vaddr_t heap_max;			/* Max heap break point */
-		int permissions;			/* Permission flags */
+	struct page *heap_page;		/* Page mapped to heap region */
+	vaddr_t heap_break;			/* Heap break point */
+	vaddr_t heap_max;			/* Max heap break point */
+	int permissions;			/* Permission flags */
+	struct regionspace *region; 
 #endif
 };
 
