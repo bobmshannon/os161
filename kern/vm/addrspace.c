@@ -155,7 +155,8 @@ as_define_region(struct addrspace *as, vaddr_t vaddr, size_t sz,
 			}
 			page = &coremap[index];											/* Get pointer to coremap entry */
 			(*page).as_vbase = vaddr;										/* Update base virtual address that page corresponds to (for TLB management) */
-			pte = add_pte(as, page, readable | writeable | executable);		/* Set page permission flags*/
+			pte = add_pte(as, page);										/* Add entry to page table */
+			pte->page->permissions = readable | writeable | executable;		/* Set page permission flags*/
 			vaddr += PAGE_SIZE;												/* Increment base virtual address (for when a region takes up multiple pages)s */
 			// modify additional fields here where necessary
 	}
@@ -164,7 +165,7 @@ as_define_region(struct addrspace *as, vaddr_t vaddr, size_t sz,
 }
 
 struct page_table_entry *
-add_pte(struct addrspace *as, struct coremap_entry *page, int permissions) {
+add_pte(struct addrspace *as, struct coremap_entry *page) {
 	struct page_table_entry *entry = as->pages->firstentry;
 	
 	/* Traverse to the end of the linked list */
@@ -177,9 +178,10 @@ add_pte(struct addrspace *as, struct coremap_entry *page, int permissions) {
 	entry->next->prev = entry;
 	entry->next->next = NULL;
 	entry->next->page = page;
-	entry->next->page->permissions = permissions;
-
-	return 0;
+	
+	entry = entry->next;
+	
+	return entry;
 }
 
 int

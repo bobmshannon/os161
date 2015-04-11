@@ -78,7 +78,7 @@ struct page_table_entry {
 	struct coremap_entry *page;			/* Index of page in coremap */
 };
 
-struct page_table_entry *add_pte(struct addrspace *as, struct coremap_entry *page, int permissions);
+struct page_table_entry *add_pte(struct addrspace *as, struct coremap_entry *page);
 
 /*
  * Functions in addrspace.c:
