@@ -58,9 +58,24 @@ struct addrspace {
         size_t as_npages2;
         paddr_t as_stackpbase;
 #else
-        /* Put stuff here for your VM system */
-
+        struct page_table *pages;   /* Page table */
+		struct page *heap_page;		/* Page mapped to heap region */
+		vaddr_t heap_break;			/* Heap break point */
+		vaddr_t heap_max;			/* Max heap break point */
 #endif
+};
+
+/*
+ * Page table
+ */
+struct page_table {
+	struct page_table_entry *firstentry;
+};
+
+struct page_table_entry {
+	struct page_table_entry *next;
+	struct page_table_entry *prev;
+	struct coremap_entry *page;
 };
 
 /*

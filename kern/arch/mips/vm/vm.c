@@ -191,7 +191,7 @@ void free_kpages(vaddr_t vaddr) {
 	
 	while(!coremap[index].is_last) {
 		index++;	
-		if(coremap[index].is_last) {    /* ---->Nevermind, it is good.<---- */
+		if(coremap[index].is_last) {
 			end = index;
 			break;
 		}

@@ -49,10 +49,22 @@ as_create(void)
 		return NULL;
 	}
 
-	/*
-	 * Initialize as needed.
-	 */
+	/* Allocate page table */
+	as->pages = kmalloc(sizeof(struct page_table));
+	if(as->pages == NULL) {
+		return NULL;
+	}
+	
+	/* Initialize */
+	as->heap_page = NULL;
+	as->heap_break = -1;
+	as->heap_max = -1;
 
+	as->pages->firstentry = kmalloc(sizeof(struct page_table_entry));
+	as->pages->firstentry->next = NULL;
+	as->pages->firstentry->prev = NULL;
+	as->pages->firstentry->page = NULL;
+	
 	return as;
 }
 
@@ -65,12 +77,30 @@ as_copy(struct addrspace *old, struct addrspace **ret)
 	if (newas==NULL) {
 		return ENOMEM;
 	}
-
+	
+	if(old == NULL) {
+		return 0;
+	}
+	
 	/*
-	 * Write this.
+	 * Copy page table from old address space into new one.
+	 * Note that the page table is just a doubly linked list 
+	 * whose data element is a pointer to a page in the coremap.
 	 */
-
-	(void)old;
+	struct page_table_entry *oldentry = old->pages->firstentry;
+	struct page_table_entry *newentry = newas->pages->firstentry;
+	while(oldentry != NULL) {
+		if(oldentry == NULL) {
+			break;		// Page table is empty, nothing to copy.
+		}
+		
+		newentry = oldentry;
+		newentry->next = kmalloc(sizeof(struct page_table_entry));
+		newentry->next->prev = newentry;
+		newentry->next->next = NULL;
+		newentry = newentry->next;
+		oldentry = oldentry->next;
+	}
 	
 	*ret = newas;
 	return 0;
