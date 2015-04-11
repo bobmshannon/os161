@@ -33,6 +33,11 @@
 /* Define a default page size of 4KB */
 #define PAGE_SIZE 4096
 
+/* Permission masks */
+#define PAGE_READABLE 4
+#define PAGE_WRITABLE 2
+#define PAGE_EXECUTABLE 1
+
 /*
  * VM system-related definitions.
  */
@@ -46,11 +51,11 @@ struct coremap_entry {
 	bool is_free;					/* Is the page free? */
 	bool is_permanent;				/* Can the page be swapped out? */
 	bool is_last;					/* Is the page the last one in a chunk? */
+	int permissions;				/* Permission flags */
 	
 	/* TLB Management Fields */
 	struct addrspace *as;			/* Corresponding address space that page belongs to */
 	vaddr_t as_vbase;				/* Base virtual address in address space */
-	off_t as_voffset;				/* Virtual address offset */
 	int cpuid;						/* CPU where TLB entry resides */
 	int state;                      /* Current state of page (dirty, clean, etc.) */
 };

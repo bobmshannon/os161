@@ -62,7 +62,6 @@ struct addrspace {
 	struct page *heap_page;		/* Page mapped to heap region */
 	vaddr_t heap_break;			/* Heap break point */
 	vaddr_t heap_max;			/* Max heap break point */
-	int permissions;			/* Permission flags */
 #endif
 };
 
@@ -74,12 +73,12 @@ struct page_table {
 };
 
 struct page_table_entry {
-	struct page_table_entry *next;
-	struct page_table_entry *prev;
-	struct coremap_entry *page;
+	struct page_table_entry *next;		/* Next page table entry */
+	struct page_table_entry *prev;		/* Previous page table entry */
+	struct coremap_entry *page;			/* Index of page in coremap */
 };
 
-struct page_table_entry *add_entry(struct coremap_entry *page);
+struct page_table_entry *add_pte(struct addrspace *as, struct coremap_entry *page, int permissions);
 
 /*
  * Functions in addrspace.c:

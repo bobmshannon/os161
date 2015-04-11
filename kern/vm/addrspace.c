@@ -85,7 +85,7 @@ as_copy(struct addrspace *old, struct addrspace **ret)
 	/*
 	 * Copy page table from old address space into new one.
 	 * Note that the page table is just a doubly linked list 
-	 * whose data element is a pointer to a page in the coremap.
+	 * whose data element is an index to a page in the coremap.
 	 */
 	struct page_table_entry *oldentry = old->pages->firstentry;
 	struct page_table_entry *newentry = newas->pages->firstentry;
@@ -140,17 +140,46 @@ int
 as_define_region(struct addrspace *as, vaddr_t vaddr, size_t sz,
 		 int readable, int writeable, int executable)
 {
-	/*
-	 * Write this.
-	 */
+	int n, i, index;
+	struct coremap_entry *page;
+	struct page_table_entry *pte;
+	
+	/* Determine how many pages to allocate for this region */
+	n = ROUNDUP(sz, PAGE_SIZE);
+	
+	/* Allocate each page */
+	for(i = 0; i < n; i++) {
+			index = alloc_page();
+			if(index == -1) {
+				return ENOMEM;
+			}
+			page = &coremap[index];											/* Get pointer to coremap entry */
+			(*page).as_vbase = vaddr;										/* Update base virtual address that page corresponds to (for TLB management) */
+			pte = add_pte(as, page, readable | writeable | executable);		/* Set page permission flags*/
+			vaddr += PAGE_SIZE;												/* Increment base virtual address (for when a region takes up multiple pages)s */
+			// modify additional fields here where necessary
+	}
 
-	(void)as;
-	(void)vaddr;
-	(void)sz;
-	(void)readable;
-	(void)writeable;
-	(void)executable;
-	return EUNIMP;
+	return 0;
+}
+
+struct page_table_entry *
+add_pte(struct addrspace *as, struct coremap_entry *page, int permissions) {
+	struct page_table_entry *entry = as->pages->firstentry;
+	
+	/* Traverse to the end of the linked list */
+	while(entry->next != NULL) {
+		entry = entry->next;
+	}
+	
+	/* Add the page table entry */
+	entry->next = kmalloc(sizeof(struct page_table_entry));
+	entry->next->prev = entry;
+	entry->next->next = NULL;
+	entry->next->page = page;
+	entry->next->page->permissions = permissions;
+
+	return 0;
 }
 
 int
