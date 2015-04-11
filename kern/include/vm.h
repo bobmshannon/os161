@@ -42,11 +42,13 @@ struct coremap_entry {
 	int cpuid;
 	int state;
 	bool referenced;
+	paddr_t pbase;
+	vaddr_t vbase;
 	bool is_free;
 	bool is_permanent;
 	bool is_last;
-	paddr_t pbase;
-	vaddr_t vbase;
+	vaddr_t as_vbase;
+	off_t as_voffset;
 };
 
 /* Coremap structure */

@@ -62,6 +62,7 @@ struct addrspace {
 		struct page *heap_page;		/* Page mapped to heap region */
 		vaddr_t heap_break;			/* Heap break point */
 		vaddr_t heap_max;			/* Max heap break point */
+		int permissions;			/* Permission flags */
 #endif
 };
 
