@@ -107,13 +107,17 @@ as_copy(struct addrspace *old, struct addrspace **ret)
 		newentry->next->next = NULL;
 		
 		/* Update address space pointer in coremap entry */
-		spinlock_acquire(&coremap_lock);
-			spinlock_acquire(&coremap[dst].lock);
+		if(!spinlock_do_i_hold(&coremap_lock)) {
+			spinlock_acquire(&coremap_lock);
+		}
+		spinlock_acquire(&coremap[dst].lock);
 			
-				coremap[dst].as = newas;
+		coremap[dst].as = newas; /* Do the update */
 			
-			spinlock_release(&coremap[dst].lock);
-		spinlock_release(&coremap_lock);
+		spinlock_release(&coremap[dst].lock);
+		if(spinlock_do_i_hold(&coremap_lock)) {
+			spinlock_release(&coremap_lock);
+		}
 		
 		/* Go to next element each linked list */
 		newentry = newentry->next;
@@ -173,7 +177,9 @@ as_define_region(struct addrspace *as, vaddr_t vaddr, size_t sz,
 			}
 			page = &coremap[index];			/* Get pointer to coremap entry */
 			
-			spinlock_acquire(&coremap_lock);
+				if(!spinlock_do_i_hold(&coremap_lock)) {
+					spinlock_acquire(&coremap_lock);
+				}				
 				spinlock_acquire(&page->lock);
 			
 					pte = add_pte(as, page);										/* Add entry to page table */
@@ -183,7 +189,9 @@ as_define_region(struct addrspace *as, vaddr_t vaddr, size_t sz,
 					// modify additional fields here where necessary
 					
 				spinlock_release(&page->lock);
-			spinlock_release(&coremap_lock);	
+				if(spinlock_do_i_hold(&coremap_lock)) {
+					spinlock_release(&coremap_lock);
+				}
 	}
 
 	return 0;

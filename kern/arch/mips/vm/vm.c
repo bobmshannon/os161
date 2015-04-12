@@ -125,7 +125,9 @@ vaddr_t alloc_kpages(int n) {
 		return PADDR_TO_KVADDR(getppages(n));
 	}
 	
-	spinlock_acquire(&coremap_lock);
+	if(!spinlock_do_i_hold(&coremap_lock)) {
+		spinlock_acquire(&coremap_lock);
+	}
 	
 	/* Find a chunk of N contiguous pages to allocate */
 	for(i = 0; i < npages; i++) {
@@ -167,7 +169,9 @@ vaddr_t alloc_kpages(int n) {
 		// modify additional fields where necessary here 
 	}
 	
-	spinlock_release(&coremap_lock);
+	if(spinlock_do_i_hold(&coremap_lock)) {
+		spinlock_release(&coremap_lock);
+	}
 	
 	return coremap[start].vbase;
 }
@@ -195,7 +199,9 @@ void free_kpages(vaddr_t vaddr) {
 		return;                    /* An invalid vaddr was passed in, exit. */
 	}
 	
-	spinlock_acquire(&coremap_lock);
+	if(!spinlock_do_i_hold(&coremap_lock)) {
+		spinlock_acquire(&coremap_lock);
+	}
 	
 	while(!coremap[index].is_last) {
 		spinlock_acquire(&coremap[index].lock);
@@ -223,7 +229,9 @@ void free_kpages(vaddr_t vaddr) {
 		spinlock_release(&coremap[index].lock);
 	}
 	
-	spinlock_release(&coremap_lock);
+	if(spinlock_do_i_hold(&coremap_lock)) {
+		spinlock_release(&coremap_lock);
+	}
 }
 
 int get_coremap_index(vaddr_t vbase) {
@@ -246,7 +254,10 @@ int get_coremap_index(vaddr_t vbase) {
 void copy_page(int src, int dst) {
 	int vsrc, vdst, i;
 	char *srcptr, *dstptr;
-	spinlock_acquire(&coremap_lock);
+	
+	if(!spinlock_do_i_hold(&coremap_lock)) {
+		spinlock_acquire(&coremap_lock);
+	}
 	
 		spinlock_acquire(&coremap[src].lock);
 		spinlock_acquire(&coremap[dst].lock);
@@ -272,7 +283,9 @@ void copy_page(int src, int dst) {
 		spinlock_release(&coremap[dst].lock);
 		spinlock_release(&coremap[src].lock);
 		
-	spinlock_release(&coremap_lock);
+	if(spinlock_do_i_hold(&coremap_lock)) {
+		spinlock_release(&coremap_lock);
+	}
 }
 
 /*
@@ -283,7 +296,9 @@ void copy_page(int src, int dst) {
  int alloc_page(void) {
 	int i;
 	
-	spinlock_acquire(&coremap_lock);
+	if(!spinlock_do_i_hold(&coremap_lock)) {
+		spinlock_acquire(&coremap_lock);
+	}
 	
 	for(i = 0; i < npages; i++) {
 		spinlock_acquire(&coremap[i].lock);
@@ -297,13 +312,17 @@ void copy_page(int src, int dst) {
 			// modify additional fields here where necessary
 			
 			spinlock_release(&coremap[i].lock);
-			spinlock_release(&coremap_lock);
+			if(spinlock_do_i_hold(&coremap_lock)) {
+				spinlock_release(&coremap_lock);
+			}
 			return i;
 		}
 		spinlock_release(&coremap[i].lock);
 	}
 	
-	spinlock_release(&coremap_lock);
+	if(spinlock_do_i_hold(&coremap_lock)) {
+		spinlock_release(&coremap_lock);
+	}
 	
 	return -1;
  }
