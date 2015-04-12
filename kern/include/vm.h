@@ -30,6 +30,9 @@
 #ifndef _VM_H_
 #define _VM_H_
 
+
+#include <synch.h>
+
 /* Define a default page size of 4KB */
 #define PAGE_SIZE 4096
 
@@ -44,6 +47,10 @@
  
 /* Coremap entry */
 struct coremap_entry {
+	/* Syncrhonization */
+	bool is_locked;
+	struct spinlock lock;
+	
 	/* Page Management */
 	bool referenced;                /* Is this page referenced? */
 	paddr_t pbase;					/* Base physical address of page */
@@ -62,6 +69,8 @@ struct coremap_entry {
 
 /* Coremap structure */
 struct coremap_entry *coremap;
+
+struct spinlock coremap_lock;
 
 /* Global VM system fields */
 int npages;                          /* Number of pages available on system. */

@@ -85,7 +85,7 @@ as_copy(struct addrspace *old, struct addrspace **ret)
 	/*
 	 * Copy page table from old address space into new one.
 	 * Note that the page table is just a doubly linked list 
-	 * whose data element is an index to a page in the coremap.
+	 * whose data element is a pointer to a page in the coremap.
 	 */
 	struct page_table_entry *oldentry = old->pages->firstentry;
 	struct page_table_entry *newentry = newas->pages->firstentry;
