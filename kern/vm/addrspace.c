@@ -89,15 +89,33 @@ as_copy(struct addrspace *old, struct addrspace **ret)
 	 */
 	struct page_table_entry *oldentry = old->pages->firstentry;
 	struct page_table_entry *newentry = newas->pages->firstentry;
-	while(oldentry != NULL) {
-		if(oldentry == NULL) {
-			break;		// Page table is empty, nothing to copy.
-		}
+	int src, dst;
+	
+	if(oldentry == NULL) {
+		return 0;		// Page table is empty, nothing to copy.
+	}
 		
-		newentry = oldentry;
+	while(oldentry != NULL) {
+		src = get_coremap_index(oldentry->page->vbase);
+		dst = alloc_page();
+		copy_page(src, dst);
+		
+		/* Copy the page */
+		newentry->page = &coremap[dst];
 		newentry->next = kmalloc(sizeof(struct page_table_entry));
 		newentry->next->prev = newentry;
 		newentry->next->next = NULL;
+		
+		/* Update address space pointer in coremap entry */
+		spinlock_acquire(&coremap_lock);
+			spinlock_acquire(&coremap[dst].lock);
+			
+				coremap[dst].as = newas;
+			
+			spinlock_release(&coremap[dst].lock);
+		spinlock_release(&coremap_lock);
+		
+		/* Go to next element each linked list */
 		newentry = newentry->next;
 		oldentry = oldentry->next;
 	}
@@ -153,12 +171,19 @@ as_define_region(struct addrspace *as, vaddr_t vaddr, size_t sz,
 			if(index == -1) {
 				return ENOMEM;
 			}
-			page = &coremap[index];											/* Get pointer to coremap entry */
-			(*page).as_vbase = vaddr;										/* Update base virtual address that page corresponds to (for TLB management) */
-			pte = add_pte(as, page);										/* Add entry to page table */
-			pte->page->permissions = readable | writeable | executable;		/* Set page permission flags*/
-			vaddr += PAGE_SIZE;												/* Increment base virtual address (for when a region takes up multiple pages)s */
-			// modify additional fields here where necessary
+			page = &coremap[index];			/* Get pointer to coremap entry */
+			
+			spinlock_acquire(&coremap_lock);
+				spinlock_acquire(&page->lock);
+			
+					pte = add_pte(as, page);										/* Add entry to page table */
+					page->permissions = readable | writeable | executable;			/* Set page permission flags*/
+					page->as_vbase = vaddr;											/* Update base virtual address that page corresponds to (for TLB management) */
+					vaddr += PAGE_SIZE;												/* Increment base virtual address (for when a region takes up multiple pages)s */
+					// modify additional fields here where necessary
+					
+				spinlock_release(&page->lock);
+			spinlock_release(&coremap_lock);	
 	}
 
 	return 0;

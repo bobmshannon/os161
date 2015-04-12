@@ -70,6 +70,7 @@ struct coremap_entry {
 /* Coremap structure */
 struct coremap_entry *coremap;
 
+/* Coremap synchronization */
 struct spinlock coremap_lock;
 
 /* Global VM system fields */
@@ -95,10 +96,11 @@ int vm_fault(int faulttype, vaddr_t faultaddress);
 vaddr_t alloc_kpages(int npages);
 void free_kpages(vaddr_t addr);
 
-/* Allocate/free user pages */
+/* Single page utility functions */
 int alloc_page(void);
 void free_page(vaddr_t addr);
-
+void copy_page(int src, int dst);
+int get_coremap_index(vaddr_t vbase);
 
 /* TLB shootdown handling called from interprocessor_interrupt */
 void vm_tlbshootdown_all(void);

@@ -44,7 +44,6 @@ static struct spinlock stealmem_lock = SPINLOCK_INITIALIZER;
 /* Declare static helper functions. */
 static void init_coremap_entry(int index, paddr_t pbase);
 static void zero_page(vaddr_t ptr);
-static int get_coremap_index(vaddr_t ptr);
 
 /*
  * Bootstrap OS/161 virtual memory system.
@@ -227,17 +226,53 @@ void free_kpages(vaddr_t vaddr) {
 	spinlock_release(&coremap_lock);
 }
 
-static int get_coremap_index(vaddr_t ptr) {
+int get_coremap_index(vaddr_t vbase) {
 	int i;
 	
 	for(i = 0; i < npages; i++) {
-		if(coremap[i].vbase == ptr) {
+		if(coremap[i].vbase == vbase) {
 			return i;
 		}
 	}
 
-	DEBUG(DB_VM, "could not find a coremap entry corresponding to virtual address 0x%08x while freeing page \n", ptr);
+	DEBUG(DB_VM, "could not find a coremap entry corresponding to virtual address 0x%08x while freeing page \n", vbase);
 	return -1;
+}
+
+/*
+ * Deep copy a single page in the coremap and its corresponding
+ * contents in memory.
+ */
+void copy_page(int src, int dst) {
+	int vsrc, vdst, i;
+	char *srcptr, *dstptr;
+	spinlock_acquire(&coremap_lock);
+	
+		spinlock_acquire(&coremap[src].lock);
+		spinlock_acquire(&coremap[dst].lock);
+		
+			/* Copy coremap entry information */
+			coremap[dst] = coremap[src];
+			vsrc = coremap[src].vbase;
+			vdst = coremap[dst].vbase;
+			
+			/* 
+			 * Copy memory contents from old page into new one.
+			 * We cast it to a char here because a char is a byte,
+			 * which allows us to copy a single byte at a time.
+			 * Thus the for loop only needs to loop PAGE_SIZE times
+			 * which is 4096 bytes.
+			 */
+			dstptr = (char *)vdst;
+			srcptr = (char *)vsrc;
+			for(i = 0; i < PAGE_SIZE; i++) {
+				dstptr[i] = srcptr[i];
+			}
+		
+		spinlock_release(&coremap[dst].lock);
+		spinlock_release(&coremap[src].lock);
+		
+	spinlock_release(&coremap_lock);
 }
 
 /*
