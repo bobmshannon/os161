@@ -353,6 +353,33 @@ void free_page(vaddr_t addr) {
 int vm_fault(int faulttype, vaddr_t faultaddress) {
 	(void)faulttype;
 	(void)faultaddress;
+	
+	vaddr_t lowerbound, upperbound;
+	struct page_table_entry *entry;
+	
+	switch(faulttype) {
+	    case VM_FAULT_READ: // 0
+			return 0;
+	    case VM_FAULT_WRITE: // 1
+			entry = curthread->t_addrspace->pages->firstentry;
+			while(entry != NULL) {
+				lowerbound = entry->page->as_vbase;
+				upperbound = lowerbound + PAGE_SIZE;
+				if(faultaddress <= upperbound && faultaddress >= lowerbound) {
+					// This is the page we are looking for. We now need to update the TLB
+					// with the proper mapping, i.e.  faultaddress ------> *(entry->page->vbase)
+					// tlb.h is a good place to start looking as to how to do this.
+					return 0;
+				}
+				entry = entry->next;
+			}
+			return EINVAL;
+	    case VM_FAULT_READONLY: // 2
+			return 0;
+	    default:
+			return EINVAL;	
+	}
+	
 	return 0;
 }
 

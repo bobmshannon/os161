@@ -168,6 +168,7 @@ as_define_region(struct addrspace *as, vaddr_t vaddr, size_t sz,
 	
 	/* Determine how many pages to allocate for this region */
 	n = ROUNDUP(sz, PAGE_SIZE);
+	n = n / PAGE_SIZE;
 	
 	/* Allocate each page */
 	for(i = 0; i < n; i++) {
