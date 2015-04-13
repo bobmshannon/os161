@@ -134,8 +134,21 @@ as_destroy(struct addrspace *as)
 	/*
 	 * Clean up as needed.
 	 */
+	 
+	 /*
+	struct page_table_entry *ptentry;
+	struct page_table_entry *tempentry;
+	
+	ptentry = as -> pages -> firstentry;
+	while(ptentry != NULL){
+		tempentry = ptentry;
+		ptentry = ptentry -> next;
+		
+		free_page(tempentry -> page -> vbase);
+	}
 	
 	kfree(as);
+	*/
 }
 
 void
@@ -224,6 +237,17 @@ as_prepare_load(struct addrspace *as)
 	/*
 	 * Write this.
 	 */
+	 
+	 //Simple implementation of as_prepare_load.
+	 struct page_table_entry *ptentry;
+	 
+	 ptentry = as -> pages -> firstentry;
+	 while(ptentry != NULL){
+	 	ptentry -> page -> permissions = readable | writeable;
+	 	
+	 	ptentry = ptentry -> next;
+	 }
+	 
 	 /*
 	 struct regionspace *region;
 	 size_t i;
@@ -242,7 +266,6 @@ as_prepare_load(struct addrspace *as)
 	 	}
 	 }
 */
-	(void)as;
 	return 0;
 }
 
