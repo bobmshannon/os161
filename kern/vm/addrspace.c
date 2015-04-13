@@ -134,8 +134,21 @@ as_destroy(struct addrspace *as)
 	/*
 	 * Clean up as needed.
 	 */
+	 
+	 /*
+	struct page_table_entry *ptentry;
+	struct page_table_entry *tempentry;
+	
+	ptentry = as -> pages -> firstentry;
+	while(ptentry != NULL){
+		tempentry = ptentry;
+		ptentry = ptentry -> next;
+		
+		free_page(tempentry -> page -> vbase);
+	}
 	
 	kfree(as);
+	*/
 }
 
 void
