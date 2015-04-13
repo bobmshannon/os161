@@ -131,24 +131,21 @@ as_copy(struct addrspace *old, struct addrspace **ret)
 void
 as_destroy(struct addrspace *as)
 {
-	/*
-	 * Clean up as needed.
-	 */
-	 
-	 /*
+	/* Mark each page free and then call kfree() where necessary */
 	struct page_table_entry *ptentry;
 	struct page_table_entry *tempentry;
 	
 	ptentry = as -> pages -> firstentry;
 	while(ptentry != NULL){
 		tempentry = ptentry;
+		free_page(ptentry -> page -> vbase);
 		ptentry = ptentry -> next;
-		
-		free_page(tempentry -> page -> vbase);
+		kfree(tempentry);
 	}
 	
+	kfree(as->pages);
+	kfree(as->pages->firstentry);
 	kfree(as);
-	*/
 }
 
 void
@@ -234,38 +231,20 @@ add_pte(struct addrspace *as, struct coremap_entry *page) {
 int
 as_prepare_load(struct addrspace *as)
 {
-	/*
-	 * Write this.
-	 */
-	 
-	 //Simple implementation of as_prepare_load.
 	 struct page_table_entry *ptentry;
-	 
+	
+	 /* 
+	  * Set permissions of each page to READ/WRITE to allow data
+	  * to be loaded into each segment of the address space.
+	  * i.e. arguments on the stack, the program code, etc.
+	  */
 	 ptentry = as -> pages -> firstentry;
 	 while(ptentry != NULL){
-	 	ptentry -> page -> permissions = readable | writeable;
+	 	ptentry -> page -> permissions = PAGE_READABLE | PAGE_WRITABLE;
 	 	
 	 	ptentry = ptentry -> next;
 	 }
-	 
-	 /*
-	 struct regionspace *region;
-	 size_t i;
-	 struct page_table_entry *pagei;
-	 
-	 region = as -> region;
-	 
-	 for(i = 0; i < region -> npages; i++){
-	 	if(as -> pages != NULL){
-	 		for(pagei = as -> pages; pagei -> next != NULL; pagei = pagei -> next){
-	 			
-	 		}
-	 	}
-	 	else{
-	 		as -> pages = (struct page_table_entry *)kmalloc(sizeof(struct page_table_entry));
-	 	}
-	 }
-*/
+
 	return 0;
 }
 
