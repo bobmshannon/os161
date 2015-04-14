@@ -58,7 +58,7 @@ struct addrspace {
         size_t as_npages2;
         paddr_t as_stackpbase;
 #else
-    struct page_table *pages;   /* Page table */
+    	struct page_table *pages;   /* Page table */
 	struct page *heap_page;		/* Page mapped to heap region */
 	vaddr_t heap_break;			/* Heap break point */
 	vaddr_t heap_max;			/* Max heap break point */
@@ -70,6 +70,14 @@ struct addrspace {
  */
 struct page_table {
 	struct page_table_entry *firstentry;
+};
+
+struct region {
+	vaddr_t vaddr;
+	size_t npages;
+	int permissions;
+	struct region *next;
+	struct region *last;
 };
 
 struct page_table_entry {
