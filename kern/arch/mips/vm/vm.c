@@ -351,30 +351,48 @@ void free_page(vaddr_t addr) {
 }
 	
 int vm_fault(int faulttype, vaddr_t faultaddress) {
-	(void)faulttype;
-	(void)faultaddress;
+	int spl, i;
+	uint32_t hi, lo;
 	
 	vaddr_t lowerbound, upperbound;
 	struct page_table_entry *entry;
 	
 	switch(faulttype) {
-	    case VM_FAULT_READ: // 0
-			return 0;
+	    case VM_FAULT_READ:  // 0
 	    case VM_FAULT_WRITE: // 1
 			entry = curthread->t_addrspace->pages->firstentry;
+			
 			while(entry != NULL) {
-				lowerbound = entry->page->as_vbase;
+				lowerbound = (entry->page->as_vbase);
 				upperbound = lowerbound + PAGE_SIZE;
-				if(faultaddress <= upperbound && faultaddress >= lowerbound) {
-					// This is the page we are looking for. We now need to update the TLB
-					// with the proper mapping, i.e.  faultaddress ------> *(entry->page->vbase)
-					// tlb.h is a good place to start looking as to how to do this.
+				if(faultaddress < upperbound && faultaddress >= lowerbound) { 
+					/* 
+					 * This is the page we are looking for. Now, update the TLB with the proper virtual
+					 * to physical address mapping, i.e. faultaddress --> (entry->page->vbase)
+					 */
+					spl = splhigh();
+					
+					/* Walk through TLB and find an open slot */
+					for (i=0; i<NUM_TLB; i++) {
+						tlb_read(&hi, &lo, i);
+						if (lo & TLBLO_VALID) {
+							continue;
+						}
+						hi = faultaddress;
+						lo = entry->page->pbase | TLBLO_DIRTY | TLBLO_VALID; 	// Mark each entry as valid and writable for now.
+						DEBUG(DB_VM, "vm: 0x%x -> 0x%x\n", faultaddress, entry->page->pbase);
+						tlb_write(hi, lo, i);
+						break;
+					}
+					
+					splx(spl);
 					return 0;
 				}
 				entry = entry->next;
 			}
 			return EINVAL;
 	    case VM_FAULT_READONLY: // 2
+			// Kill thread for violating access permissions.
 			return 0;
 	    default:
 			return EINVAL;	
@@ -382,6 +400,35 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
 	
 	return 0;
 }
+
+/* 
+ * Generate a TLB Lo entry according to the below format
+ * as defined by the MIPS architecture.
+ * -----------------------------------------------------
+ * |       PPN        |     MODE     |     RESERVED    |
+ * -----------------------------------------------------
+ * 31               12  11          8  7               0
+ *
+ * Here, PPN is the the pbase of the corresponding page
+ * in the coremap.
+ * The MODE bits set READ/WRITE/EXECUTION permissions, and should
+ * match the permissions previously set in the coremap entry. 
+ */
+
+/* 
+ * Generate a TLB Hi entry according to the below format
+ * as defined by the MIPS architecture.
+ * -----------------------------------------------------
+ * |       VPN        |     PID     |     RESERVED     |
+ * -----------------------------------------------------
+ * 31               12  11          8  7               0
+ *
+ * Here, VPN is the upper 20 bits of the virtual address that
+ * the user program accessed which caused the TLB fault. 
+ * The PID bits represent the process ID of the process to which
+ * this TLB entry belongs to.
+ */
+
 
 void vm_tlbshootdown_all(void) {
 
