@@ -175,6 +175,7 @@ as_define_region(struct addrspace *as, vaddr_t vaddr, size_t sz,
 	int n, i, index;
 	struct coremap_entry *page;
 	struct page_table_entry *pte;
+	struct region *nregion;
 	
 	/* Determine how many pages to allocate for this region */
 	n = ROUNDUP(sz, PAGE_SIZE);
@@ -204,6 +205,27 @@ as_define_region(struct addrspace *as, vaddr_t vaddr, size_t sz,
 					spinlock_release(&coremap_lock);
 				}
 	}
+	
+	/*
+	if(as -> regions != NULL){
+		nregion = as -> regions -> prev;
+		nregion -> next = (struct region *)kmalloc(sizeof(struct region));
+		nregion = nregion -> next;
+		nregion -> next = NULL;
+		
+		as -> regions -> prev = nregion;
+	}
+	else if(as -> regions == NULL){
+		as -> regions = (struct region *)kmalloc(sizeof(struct region));
+		as -> regions -> next = NULL;
+		as -> regions -> prev = as -> regions;
+		nregion = as -> regions;
+	}
+	
+	nregion -> vaddr = vaddr;
+	nregion -> permissions = (readable | writeable | executable);
+	nregion -> npages = n;
+	*/
 
 	return 0;
 }
