@@ -378,9 +378,9 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
 						if (lo & TLBLO_VALID) {
 							continue;
 						}
-						hi = faultaddress;
+						hi = faultaddress & 0xFFFFF000;
 						lo = entry->page->pbase | TLBLO_DIRTY | TLBLO_VALID; 	// Mark each entry as valid and writable for now.
-						DEBUG(DB_VM, "vm: 0x%x -> 0x%x\n", faultaddress, entry->page->pbase);
+						DEBUG(DB_VM, "vm: 0x%08x -> 0x%08x; hi=0x%08x lo=0x%08x\n", faultaddress, entry->page->pbase, hi, lo);
 						tlb_write(hi, lo, i);
 						break;
 					}

@@ -175,7 +175,7 @@ as_define_region(struct addrspace *as, vaddr_t vaddr, size_t sz,
 	int n, i, index;
 	struct coremap_entry *page;
 	struct page_table_entry *pte;
-	struct region *nregion;
+//	struct region *nregion;
 	
 	/* Determine how many pages to allocate for this region */
 	n = ROUNDUP(sz, PAGE_SIZE);
@@ -287,6 +287,9 @@ as_define_stack(struct addrspace *as, vaddr_t *stackptr)
 	/*
 	 * Write this.
 	 */
+	 
+	as_define_region(as, USERSTACK-2*PAGE_SIZE, 2*PAGE_SIZE,
+			PAGE_READABLE, PAGE_WRITABLE, PAGE_EXECUTABLE);
 
 	(void)as;
 
