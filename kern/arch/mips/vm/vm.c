@@ -196,7 +196,7 @@ void free_kpages(vaddr_t vaddr) {
 	end = index;
 	
 	if(index == -1) {
-		return;                    /* An invalid vaddr was passed in, exit. */
+		return;                    // An invalid vaddr was passed in, exit. 
 	}
 	
 	if(!spinlock_do_i_hold(&coremap_lock)) {
@@ -243,7 +243,7 @@ int get_coremap_index(vaddr_t vbase) {
 		}
 	}
 
-	DEBUG(DB_VM, "could not find a coremap entry corresponding to virtual address 0x%08x while freeing page \n", vbase);
+	//DEBUG(DB_VM, "could not find a coremap entry corresponding to virtual address 0x%08x\n", vbase);
 	return -1;
 }
 
@@ -362,7 +362,7 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
 	    case VM_FAULT_WRITE: // 1
 			entry = curthread->t_addrspace->pages->firstentry;
 			
-			while(entry != NULL) {
+			while(entry != NULL && entry->page != NULL) {
 				lowerbound = (entry->page->as_vbase);
 				upperbound = lowerbound + PAGE_SIZE;
 				if(faultaddress < upperbound && faultaddress >= lowerbound) { 

@@ -87,7 +87,8 @@ as_copy(struct addrspace *old, struct addrspace **ret)
 	 * Note that the page table is just a doubly linked list 
 	 * whose data element is a pointer to a page in the coremap.
 	 */
-	struct page_table_entry *oldentry = old->pages->firstentry;
+	//struct page_table_entry *oldentry = old->pages->firstentry;
+	struct page_table_entry *oldentry = old->pages->firstentry->next;
 	struct page_table_entry *newentry = newas->pages->firstentry;
 	int src, dst;
 	
@@ -132,20 +133,23 @@ void
 as_destroy(struct addrspace *as)
 {
 	/* Mark each page free and then call kfree() where necessary */
-	struct page_table_entry *ptentry;
+/*	struct page_table_entry *ptentry;
 	struct page_table_entry *tempentry;
 	
 	ptentry = as -> pages -> firstentry;
 	while(ptentry != NULL){
 		tempentry = ptentry;
-		free_page(ptentry -> page -> vbase);
+		if(ptentry->page != NULL) {
+			free_page(ptentry -> page -> vbase);
+		}
 		ptentry = ptentry -> next;
 		kfree(tempentry);
 	}
 	
 	kfree(as->pages);
 	kfree(as->pages->firstentry);
-	kfree(as);
+	kfree(as);*/
+	(void)as;
 }
 
 void
@@ -288,7 +292,7 @@ as_define_stack(struct addrspace *as, vaddr_t *stackptr)
 	 * Write this.
 	 */
 	 
-	as_define_region(as, USERSTACK-2*PAGE_SIZE, 2*PAGE_SIZE,
+	as_define_region(as, USERSTACK-12*PAGE_SIZE, 12*PAGE_SIZE,
 			PAGE_READABLE, PAGE_WRITABLE, PAGE_EXECUTABLE);
 
 	(void)as;

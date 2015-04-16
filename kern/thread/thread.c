@@ -158,6 +158,10 @@ thread_create(const char *name)
 	/* PID */
 	pid_t pid = add_process_entry(thread);
 	thread->t_pid = pid;
+	
+	if(pid > 1) {
+	init_fd_table();
+	}
 
 	return thread;
 }
