@@ -359,40 +359,36 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
 	
 	switch(faulttype) {
 	    case VM_FAULT_READ:  // 0
+			
 	    case VM_FAULT_WRITE: // 1
 			entry = curthread->t_addrspace->pages->firstentry;
-			
 			while(entry != NULL && entry->page != NULL) {
 				lowerbound = (entry->page->as_vbase);
 				upperbound = lowerbound + PAGE_SIZE;
-				if(faultaddress < upperbound && faultaddress >= lowerbound) { 
-					/* 
-					 * This is the page we are looking for. Now, update the TLB with the proper virtual
-					 * to physical address mapping, i.e. faultaddress --> (entry->page->vbase)
-					 */
-					spl = splhigh();
-					
-					/* Walk through TLB and find an open slot */
-					for (i=0; i<NUM_TLB; i++) {
-						tlb_read(&hi, &lo, i);
-						if (lo & TLBLO_VALID) {
-							continue;
+					if(faultaddress < upperbound && faultaddress >= lowerbound) { 
+/*  * This is the page we are looking for. Now, update the TLB with the proper virtual
+    * to physical address mapping, i.e. faultaddress --> (entry->page->vbase)*/
+						spl = splhigh();/* Walk through TLB and find an open slot */
+						for (i=0; i<NUM_TLB; i++) {
+							tlb_read(&hi, &lo, i);
+							if (lo & TLBLO_VALID) {
+								continue;
+							}
+							hi = faultaddress & 0xFFFFF000;
+							lo = entry->page->pbase | TLBLO_DIRTY | TLBLO_VALID; // Mark each entry as valid and writable for now.
+							DEBUG(DB_VM, "vm: 0x%08x -> 0x%08x; hi=0x%08x lo=0x%08x\n", faultaddress, entry->page->pbase, hi, lo);
+							tlb_write(hi, lo, i);
+							break;
 						}
-						hi = faultaddress & 0xFFFFF000;
-						lo = entry->page->pbase | TLBLO_DIRTY | TLBLO_VALID; 	// Mark each entry as valid and writable for now.
-						DEBUG(DB_VM, "vm: 0x%08x -> 0x%08x; hi=0x%08x lo=0x%08x\n", faultaddress, entry->page->pbase, hi, lo);
-						tlb_write(hi, lo, i);
-						break;
-					}
 					
-					splx(spl);
-					return 0;
+						splx(spl);
+						return 0;
+					}
+					entry = entry->next;
 				}
-				entry = entry->next;
-			}
 			return EINVAL;
 	    case VM_FAULT_READONLY: // 2
-			// Kill thread for violating access permissions.
+				// Kill thread for violating access permissions.
 			return 0;
 	    default:
 			return EINVAL;	
