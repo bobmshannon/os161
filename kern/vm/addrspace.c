@@ -133,11 +133,10 @@ as_copy(struct addrspace *old, struct addrspace **ret)
 	oldregion = old -> regions -> firstregion;
 	
 	while(oldregion != NULL){
+		newregion = kmalloc(sizeof(struct region));
 		newregion -> vaddr = oldregion -> vaddr;
 		newregion -> permissions = oldregion -> permissions;
 		newregion -> npages = oldregion -> npages;
-		newregion -> next = kmalloc(sizeof(struct region));
-		newregion -> next = NULL;
 
 		newregion = newregion -> next;
 		oldregion = oldregion -> next;
