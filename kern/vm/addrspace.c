@@ -93,6 +93,7 @@ as_copy(struct addrspace *old, struct addrspace **ret)
 	//struct page_table_entry *oldentry = old->pages->firstentry;
 	struct page_table_entry *oldentry = old->pages->firstentry->next;
 	struct page_table_entry *newentry = newas->pages->firstentry;
+
 	int src, dst;
 	
 	if(oldentry == NULL) {
@@ -127,6 +128,21 @@ as_copy(struct addrspace *old, struct addrspace **ret)
 		newentry = newentry->next;
 		oldentry = oldentry->next;
 	}
+	struct region *newregion, *oldregion;
+	newregion = newas -> regions -> firstregion;
+	oldregion = old -> regions -> firstregion;
+	
+	while(oldregion != NULL){
+		newregion -> vaddr = oldregion -> vaddr;
+		newregion -> permissions = oldregion -> permissions;
+		newregion -> npages = oldregion -> npages;
+		newregion -> next = kmalloc(sizeof(struct region));
+		newregion -> next = NULL;
+
+		newregion = newregion -> next;
+		oldregion = oldregion -> next;
+	}
+
 	
 	*ret = newas;
 	return 0;
