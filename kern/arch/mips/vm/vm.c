@@ -184,7 +184,49 @@ static void zero_page(vaddr_t vaddr) {
  * Free a contiguous chunk of kernel pages.
  */
 void free_kpages(vaddr_t vaddr) {
-	(void)vaddr;
+	int index, start, end;
+	
+	index = get_coremap_index(vaddr);
+	start = index;
+	end = index;
+	
+	if(index == -1) {
+		return;                    // An invalid vaddr was passed in, exit. 
+	}
+	
+	if(!spinlock_do_i_hold(&coremap_lock)) {
+		spinlock_acquire(&coremap_lock);
+	}
+	
+	while(!coremap[index].is_last) {
+		spinlock_acquire(&coremap[index].lock);
+		
+		if(coremap[index].is_last) {
+			end = index;
+			break;
+		}
+		
+		spinlock_release(&coremap[index].lock);
+		
+		index++;	
+	}
+	
+	for(index = start; index <= end; index++) {
+		spinlock_acquire(&coremap[index].lock);
+		
+		coremap[index].state = -1;
+		coremap[index].referenced = false;
+		coremap[index].is_free = true;
+		coremap[index].is_permanent = false;
+		coremap[index].is_last = false;	
+		// modify additional fields here where necessary	
+		
+		spinlock_release(&coremap[index].lock);
+	}
+	
+	if(spinlock_do_i_hold(&coremap_lock)) {
+		spinlock_release(&coremap_lock);
+	}
 }
 
 int get_coremap_index(vaddr_t vbase) {
