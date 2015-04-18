@@ -177,61 +177,14 @@ vaddr_t alloc_kpages(int n) {
 }
 
 static void zero_page(vaddr_t vaddr) {
-	int i;
-	char *ptr;
-	ptr = (char *)vaddr;
-	for(i = 0; i < PAGE_SIZE; i++) {
-		*(ptr+i) = 0;
-	}
+	(void)vaddr;
 }
 
 /*
  * Free a contiguous chunk of kernel pages.
  */
 void free_kpages(vaddr_t vaddr) {
-	int index, start, end;
-	
-	index = get_coremap_index(vaddr);
-	start = index;
-	end = index;
-	
-	if(index == -1) {
-		return;                    // An invalid vaddr was passed in, exit. 
-	}
-	
-	if(!spinlock_do_i_hold(&coremap_lock)) {
-		spinlock_acquire(&coremap_lock);
-	}
-	
-	while(!coremap[index].is_last) {
-		spinlock_acquire(&coremap[index].lock);
-		
-		if(coremap[index].is_last) {
-			end = index;
-			break;
-		}
-		
-		spinlock_release(&coremap[index].lock);
-		
-		index++;	
-	}
-	
-	for(index = start; index <= end; index++) {
-		spinlock_acquire(&coremap[index].lock);
-		
-		coremap[index].state = -1;
-		coremap[index].referenced = false;
-		coremap[index].is_free = true;
-		coremap[index].is_permanent = false;
-		coremap[index].is_last = false;	
-		// modify additional fields here where necessary	
-		
-		spinlock_release(&coremap[index].lock);
-	}
-	
-	if(spinlock_do_i_hold(&coremap_lock)) {
-		spinlock_release(&coremap_lock);
-	}
+	(void)vaddr;
 }
 
 int get_coremap_index(vaddr_t vbase) {
@@ -243,7 +196,7 @@ int get_coremap_index(vaddr_t vbase) {
 		}
 	}
 
-	//DEBUG(DB_VM, "could not find a coremap entry corresponding to virtual address 0x%08x\n", vbase);
+	DEBUG(DB_VM, "could not find a coremap entry corresponding to virtual address 0x%08x\n", vbase);
 	return -1;
 }
 
@@ -252,40 +205,9 @@ int get_coremap_index(vaddr_t vbase) {
  * contents in memory.
  */
 void copy_page(int src, int dst) {
-	int vsrc, vdst, i;
-	char *srcptr, *dstptr;
-	
-	if(!spinlock_do_i_hold(&coremap_lock)) {
-		spinlock_acquire(&coremap_lock);
-	}
-	
-		spinlock_acquire(&coremap[src].lock);
-		spinlock_acquire(&coremap[dst].lock);
-		
-			/* Copy coremap entry information */
-			coremap[dst] = coremap[src];
-			vsrc = coremap[src].vbase;
-			vdst = coremap[dst].vbase;
-			
-			/* 
-			 * Copy memory contents from old page into new one.
-			 * We cast it to a char here because a char is a byte,
-			 * which allows us to copy a single byte at a time.
-			 * Thus the for loop only needs to loop PAGE_SIZE times
-			 * which is 4096 bytes.
-			 */
-			dstptr = (char *)vdst;
-			srcptr = (char *)vsrc;
-			for(i = 0; i < PAGE_SIZE; i++) {
-				dstptr[i] = srcptr[i];
-			}
-		
-		spinlock_release(&coremap[dst].lock);
-		spinlock_release(&coremap[src].lock);
-		
-	if(spinlock_do_i_hold(&coremap_lock)) {
-		spinlock_release(&coremap_lock);
-	}
+	(void)src;
+	(void)dst;
+
 }
 
 /*
@@ -308,7 +230,7 @@ void copy_page(int src, int dst) {
 			coremap[i].referenced = true;
 			coremap[i].is_permanent = false;
 			coremap[i].is_last = true;
-			zero_page(coremap[i].vbase);
+			//zero_page(coremap[i].vbase);
 			// modify additional fields here where necessary
 			
 			spinlock_release(&coremap[i].lock);
@@ -333,21 +255,7 @@ void copy_page(int src, int dst) {
  * in a chunk, otherwise it will corrupt it. Use free_kpages instead.
  */
 void free_page(vaddr_t addr) {
-			int i = get_coremap_index(addr);
-			
-			if(i == -1) {
-				return ;			/* Not a valid page. */
-			}
-			
-			spinlock_acquire(&coremap[i].lock);
-			
-			coremap[i].is_free = true;
-			coremap[i].referenced = false;
-			coremap[i].is_permanent = false;
-			coremap[i].is_last = false;
-			// modify additional fields here where necessary	
-			
-			spinlock_release(&coremap[i].lock);
+	(void)addr;
 }
 	
 int vm_fault(int faulttype, vaddr_t faultaddress) {
@@ -366,8 +274,10 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
 				lowerbound = (entry->page->as_vbase);
 				upperbound = lowerbound + PAGE_SIZE;
 					if(faultaddress < upperbound && faultaddress >= lowerbound) { 
-/*  * This is the page we are looking for. Now, update the TLB with the proper virtual
-    * to physical address mapping, i.e. faultaddress --> (entry->page->vbase)*/
+					   /*  
+						* This is the page we are looking for. Now, update the TLB with the proper virtual
+						* to physical address mapping, i.e. faultaddress --> (entry->page->vbase)
+						*/
 						spl = splhigh();/* Walk through TLB and find an open slot */
 						for (i=0; i<NUM_TLB; i++) {
 							tlb_read(&hi, &lo, i);

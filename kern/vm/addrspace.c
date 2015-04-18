@@ -90,8 +90,7 @@ as_copy(struct addrspace *old, struct addrspace **ret)
 	 * Note that the page table is just a doubly linked list 
 	 * whose data element is a pointer to a page in the coremap.
 	 */
-	//struct page_table_entry *oldentry = old->pages->firstentry;
-	struct page_table_entry *oldentry = old->pages->firstentry->next;
+	struct page_table_entry *oldentry = old->pages->firstentry;
 	struct page_table_entry *newentry = newas->pages->firstentry;
 
 	int src, dst;
@@ -257,6 +256,17 @@ as_define_region(struct addrspace *as, vaddr_t vaddr, size_t sz,
 struct page_table_entry *
 add_pte(struct addrspace *as, struct coremap_entry *page) {
 	struct page_table_entry *entry = as->pages->firstentry;
+	
+	// Base Case: Page Table is empty.
+	if(entry->page == NULL) {
+		/* Add the page table entry to first node */
+		entry->next = kmalloc(sizeof(struct page_table_entry));
+		entry->next->prev = entry;
+		entry->next->next = NULL;
+		entry->next->page = page;	
+		entry = entry->next;
+		return entry;
+	}
 	
 	/* Traverse to the end of the linked list */
 	while(entry->next != NULL) {
