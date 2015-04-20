@@ -606,6 +606,7 @@ kmalloc(size_t sz)
 		/* Round up to a whole number of pages. */
 		npages = (sz + PAGE_SIZE - 1)/PAGE_SIZE;
 		address = alloc_kpages(npages);
+		DEBUG(DB_VM, "kmalloc: allocated a page, vaddr=0x%08x\n", address);
 		if (address==0) {
 			return NULL;
 		}
@@ -626,6 +627,7 @@ kfree(void *ptr)
 		return;
 	} else if (subpage_kfree(ptr)) {
 		KASSERT((vaddr_t)ptr%PAGE_SIZE==0);
+		DEBUG(DB_VM, "kmalloc: freeing a page, vaddr=0x%08x\n", (vaddr_t)ptr);
 		free_kpages((vaddr_t)ptr);
 	}
 }

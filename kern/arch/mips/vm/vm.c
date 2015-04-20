@@ -70,7 +70,7 @@ void vm_bootstrap() {
 	free = ROUNDUP(free, PAGE_SIZE);                            /* make sure coremap takes up a whole page or more */
 	free_start = free;                                          /* update global VM field */
 	npages -= (free - lo) / PAGE_SIZE;		                    /* subtract number of page(s) taken up from coremap */
-	spinlock_init(&coremap_lock);								/* Synchronization */
+	coremap_lock = lock_create("coremap lock");		   			/* Synchronization */
 	
 	/* Initialize each page in the coremap */
 	for(j = 0; j < npages; j++) {
@@ -116,64 +116,33 @@ static paddr_t getppages(unsigned long npages)
  * in contiguous chunks.
  */
 vaddr_t alloc_kpages(int n) {
-	int i, start, end, match;
-	match = 0;
-	
+	int i;
 	KASSERT(n > 0);
+	
+	if(n > 1) {
+		panic("allocation of more than 1 kernel page not yet supported.\n");
+	}
 	
 	if(!vm_bootstrapped) {
 		return PADDR_TO_KVADDR(getppages(n));
 	}
 	
-	if(!spinlock_do_i_hold(&coremap_lock)) {
-		spinlock_acquire(&coremap_lock);
-	}
-	
-	/* Find a chunk of N contiguous pages to allocate */
+	DEBUG(DB_VM, "allocating %d kernel pages...\n", n);
+
 	for(i = 0; i < npages; i++) {
-		if(coremap[i].is_free && match == 0) {
-			start = i;
-			match++;
-			if(n == match) {
-				end = i;
-				break;
-			}
-			continue;
+		spinlock_acquire(&coremap[i].lock);
+		if(coremap[i].is_free) {
+			DEBUG(DB_VM, "coremap[%d] is free, assigning it...\n", i);
+			coremap[i].is_free = false;
+			zero_page(coremap[i].vbase);
+			spinlock_release(&coremap[i].lock);
+			return coremap[i].vbase;
 		}
-		if(coremap[i].is_free && match != n) {
-			match++;
-			if(n == match) {
-				end = i;
-				break;
-			}
-			continue;
-		}
-		if(!coremap[i].is_free && match != n) {
-			match = 0;
-		}
-		
-		if(match != n && i == npages-1) {
-			panic("could not allocate a contiguous block of %d pages", n);
-		}
+		spinlock_release(&coremap[i].lock);
 	}
-	
-	/* Update the state of the allocated page(s) before returning them */ 
-	for(i = start; i <= end; i++) {
-		coremap[i].is_free = false;
-		coremap[i].referenced = true;
-		coremap[i].is_permanent = true;
-		if(i == end) {
-			coremap[i].is_last = true;
-		}
-		zero_page(coremap[i].vbase);
-		// modify additional fields where necessary here 
-	}
-	
-	if(spinlock_do_i_hold(&coremap_lock)) {
-		spinlock_release(&coremap_lock);
-	}
-	
-	return coremap[start].vbase;
+
+	panic("vm: out of memory\n");
+	return 0;
 }
 
 static void zero_page(vaddr_t vaddr) {
@@ -189,49 +158,17 @@ static void zero_page(vaddr_t vaddr) {
  * Free a contiguous chunk of kernel pages.
  */
 void free_kpages(vaddr_t vaddr) {
-	int index, start, end;
+	int index;
 	
 	index = get_coremap_index(vaddr);
-	start = index;
-	end = index;
-	
 	if(index == -1) {
-		return;                    // An invalid vaddr was passed in, exit. 
+		return;
 	}
-	
-	if(!spinlock_do_i_hold(&coremap_lock)) {
-		spinlock_acquire(&coremap_lock);
-	}
-	
-	while(!coremap[index].is_last) {
-		spinlock_acquire(&coremap[index].lock);
-		
-		if(coremap[index].is_last) {
-			end = index;
-			break;
-		}
-		
-		spinlock_release(&coremap[index].lock);
-		
-		index++;	
-	}
-	
-	for(index = start; index <= end; index++) {
-		spinlock_acquire(&coremap[index].lock);
-		
-		coremap[index].state = -1;
-		coremap[index].referenced = false;
+	spinlock_acquire(&coremap[index].lock);
 		coremap[index].is_free = true;
-		coremap[index].is_permanent = false;
-		coremap[index].is_last = false;	
-		// modify additional fields here where necessary	
-		
-		spinlock_release(&coremap[index].lock);
-	}
+	spinlock_release(&coremap[index].lock);
 	
-	if(spinlock_do_i_hold(&coremap_lock)) {
-		spinlock_release(&coremap_lock);
-	}
+	DEBUG(DB_VM, "freeing coremap[%d]...\n", index);
 }
 
 int get_coremap_index(vaddr_t vbase) {
@@ -243,7 +180,7 @@ int get_coremap_index(vaddr_t vbase) {
 		}
 	}
 
-	//DEBUG(DB_VM, "could not find a coremap entry corresponding to virtual address 0x%08x\n", vbase);
+	DEBUG(DB_VM, "could not find a coremap entry corresponding to virtual address 0x%08x\n", vbase);
 	return -1;
 }
 
@@ -255,13 +192,8 @@ void copy_page(int src, int dst) {
 	int vsrc, vdst, i;
 	char *srcptr, *dstptr;
 	
-	if(!spinlock_do_i_hold(&coremap_lock)) {
-		spinlock_acquire(&coremap_lock);
-	}
+		if(!lock_do_i_hold(coremap_lock)) { lock_acquire(coremap_lock); }
 	
-		spinlock_acquire(&coremap[src].lock);
-		spinlock_acquire(&coremap[dst].lock);
-		
 			/* Copy coremap entry information */
 			coremap[dst] = coremap[src];
 			vsrc = coremap[src].vbase;
@@ -280,12 +212,7 @@ void copy_page(int src, int dst) {
 				dstptr[i] = srcptr[i];
 			}
 		
-		spinlock_release(&coremap[dst].lock);
-		spinlock_release(&coremap[src].lock);
-		
-	if(spinlock_do_i_hold(&coremap_lock)) {
-		spinlock_release(&coremap_lock);
-	}
+		if(lock_do_i_hold(coremap_lock)) { lock_release(coremap_lock); }
 }
 
 /*
@@ -296,13 +223,10 @@ void copy_page(int src, int dst) {
  int alloc_page(void) {
 	int i;
 	
-	if(!spinlock_do_i_hold(&coremap_lock)) {
-		spinlock_acquire(&coremap_lock);
-	}
+	if(!lock_do_i_hold(coremap_lock)) { lock_acquire(coremap_lock); }
 	
 	for(i = 0; i < npages; i++) {
-		spinlock_acquire(&coremap[i].lock);
-		
+
 		if(coremap[i].is_free) {
 			coremap[i].is_free = false;
 			coremap[i].referenced = true;
@@ -311,19 +235,12 @@ void copy_page(int src, int dst) {
 			zero_page(coremap[i].vbase);
 			// modify additional fields here where necessary
 			
-			spinlock_release(&coremap[i].lock);
-			if(spinlock_do_i_hold(&coremap_lock)) {
-				spinlock_release(&coremap_lock);
-			}
 			return i;
 		}
-		spinlock_release(&coremap[i].lock);
 	}
 	
-	if(spinlock_do_i_hold(&coremap_lock)) {
-		spinlock_release(&coremap_lock);
-	}
-	
+	if(lock_do_i_hold(coremap_lock)) { lock_release(coremap_lock); }
+
 	return -1;
  }
  

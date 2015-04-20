@@ -71,7 +71,7 @@ struct coremap_entry {
 struct coremap_entry *coremap;
 
 /* Coremap synchronization */
-struct spinlock coremap_lock;
+struct lock *coremap_lock;
 
 /* Global VM system fields */
 int npages;                          /* Number of pages available on system. */

@@ -112,18 +112,12 @@ as_copy(struct addrspace *old, struct addrspace **ret)
 		newentry->next->next = NULL;
 		
 		/* Update address space pointer in coremap entry */
-		if(!spinlock_do_i_hold(&coremap_lock)) {
-			spinlock_acquire(&coremap_lock);
-		}
-		spinlock_acquire(&coremap[dst].lock);
-			
+		if(!lock_do_i_hold(coremap_lock)) { lock_acquire(coremap_lock); }
+
 		coremap[dst].as = newas; /* Do the update */
-			
-		spinlock_release(&coremap[dst].lock);
-		if(spinlock_do_i_hold(&coremap_lock)) {
-			spinlock_release(&coremap_lock);
-		}
-		
+
+		if(lock_do_i_hold(coremap_lock)) { lock_release(coremap_lock); }
+
 		/* Go to next element each linked list */
 		newentry = newentry->next;
 		oldentry = oldentry->next;
@@ -151,6 +145,17 @@ as_copy(struct addrspace *old, struct addrspace **ret)
 void
 as_destroy(struct addrspace *as)
 {
+
+	struct page_table_entry *entry = as->pages->firstentry;
+	while(entry != NULL) {
+		if(entry->page == NULL) {
+			continue;
+		}
+		
+		free_kpages(entry->page->vbase);
+		entry = entry->next;
+	}
+	kfree(as);
 	/* Mark each page free and then call kfree() where necessary */
 	/*
 	struct page_table_entry *ptentry;
@@ -209,27 +214,19 @@ as_define_region(struct addrspace *as, vaddr_t vaddr, size_t sz,
 	
 	/* Allocate each page */
 	for(i = 0; i < n; i++) {
-		index = alloc_page();
+		index = get_coremap_index(alloc_kpages(1));
 		if(index == -1) {
 			return ENOMEM;
 		}
 		page = &coremap[index]; /* Get pointer to coremap entry */
 			
-		if(!spinlock_do_i_hold(&coremap_lock)) {
-			spinlock_acquire(&coremap_lock);
-		}				
-		spinlock_acquire(&page->lock);
-			
 		pte = add_pte(as, page);	/* Add entry to page table */
+		spinlock_acquire(&page->lock);
 		page->permissions = readable | writeable | executable;/* Set page permission flags*/
 		page->as_vbase = vaddr;		/* Update base virtual address that page corresponds to (for TLB management)*/
+		spinlock_release(&page->lock);
 		vaddr +=PAGE_SIZE;		/* Increment base virtual address (for when a region takes up multiple pages)s*/
 		// modify additional fields here where necessary
-					
-		spinlock_release(&page->lock);
-		if(spinlock_do_i_hold(&coremap_lock)) {
-			spinlock_release(&coremap_lock);
-		}
 	}
 	
 	
