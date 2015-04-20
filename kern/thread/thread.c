@@ -160,7 +160,7 @@ thread_create(const char *name)
 	thread->t_pid = pid;
 	
 	if(pid > 1) {
-	init_fd_table();
+	//init_fd_table();
 	}
 
 	return thread;
@@ -1018,13 +1018,18 @@ void
 thread_exit(void)
 {
 	struct thread *cur;
-
+	int i;
 	cur = curthread;
 
 	/* VFS fields */
 	if (cur->t_cwd) {
 		VOP_DECREF(cur->t_cwd);
 		cur->t_cwd = NULL;
+	}
+	
+	/* FD table */
+	if(cur->t_fd_table) {
+		(void)i;
 	}
 
 	/* VM fields */

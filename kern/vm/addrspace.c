@@ -277,20 +277,19 @@ add_pte(struct addrspace *as, struct coremap_entry *page) {
 int
 as_prepare_load(struct addrspace *as)
 {
-	 struct page_table_entry *ptentry;
-	
+
 	 /* 
 	  * Set permissions of each page to READ/WRITE to allow data
 	  * to be loaded into each segment of the address space.
 	  * i.e. arguments on the stack, the program code, etc.
-	  */
+	struct page_table_entry *ptentry; 
 	 ptentry = as -> pages -> firstentry;
 	 while(ptentry != NULL){
 	 	ptentry -> page -> permissions = PAGE_READABLE | PAGE_WRITABLE;
 	 	
 	 	ptentry = ptentry -> next;
-	 }
-
+	 } */
+	(void)as;
 	return 0;
 }
 
