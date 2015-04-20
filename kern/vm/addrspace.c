@@ -151,6 +151,17 @@ as_copy(struct addrspace *old, struct addrspace **ret)
 void
 as_destroy(struct addrspace *as)
 {
+	struct page_table_entry *entry = as->pages->firstentry;
+	while(entry != NULL) {
+		if(entry->page == NULL) {
+			entry = entry->next;
+			continue;
+		}
+		
+		free_kpages(entry->page->vbase);
+		entry = entry->next;
+	}
+	kfree(as);
 	/* Mark each page free and then call kfree() where necessary */
 	/*
 	struct page_table_entry *ptentry;

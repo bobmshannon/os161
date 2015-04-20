@@ -228,13 +228,14 @@ init_fd_table(void) {
 	curthread->t_fd_table[2]->writable = true;
 	curthread->t_fd_table[2]->readable = true;
 
-	for(i = 3; i < OPEN_MAX; i++) {
+	(void)i;
+	/*for(i = 3; i < OPEN_MAX; i++) {
 		curthread->t_fd_table[i] = kmalloc(sizeof(struct fd*));
 		curthread->t_fd_table[i]->flags = 0;
 		curthread->t_fd_table[i]->offset = 0;
 		curthread->t_fd_table[i]->ref_count = 0;
 		curthread->t_fd_table[i]->vn = NULL;		
-	}
+	}*/
 } 
 
 /*
