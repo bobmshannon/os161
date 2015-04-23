@@ -166,7 +166,7 @@ thread_create(const char *name)
 	(void)i;
 	if(thread->t_pid > 1) {
 		(void)path;
-		//vfs_open(path, O_RDONLY, 0644, &stdin);
+		vfs_open(path, O_RDONLY, 0644, &stdin);
 
 		// stdin 
 		thread->t_fd_table[0] = kmalloc(sizeof(struct fd));
@@ -174,7 +174,7 @@ thread_create(const char *name)
 		thread->t_fd_table[0]->offset = 0;
 		thread->t_fd_table[0]->ref_count = 0;
 		thread->t_fd_table[0]->vn = stdin;
-		//thread->t_fd_table[0]->lock = lock_create("stdin");
+		thread->t_fd_table[0]->lock = lock_create("stdin");
 		thread->t_fd_table[0]->writable = true;
 		thread->t_fd_table[0]->readable = true;
 		
@@ -184,7 +184,7 @@ thread_create(const char *name)
 		thread->t_fd_table[1]->offset = 0;
 		thread->t_fd_table[1]->ref_count = 0;
 		thread->t_fd_table[1]->vn = stdin;
-		//thread->t_fd_table[1]->lock = lock_create("stdout");
+		thread->t_fd_table[1]->lock = lock_create("stdout");
 		thread->t_fd_table[1]->writable = true;
 		thread->t_fd_table[1]->readable = false;
 
@@ -194,7 +194,7 @@ thread_create(const char *name)
 		thread->t_fd_table[2]->offset = 0;
 		thread->t_fd_table[2]->ref_count = 0;
 		thread->t_fd_table[2]->vn = stdin;
-		//thread->t_fd_table[2]->lock = lock_create("stderr");
+		thread->t_fd_table[2]->lock = lock_create("stderr");
 		thread->t_fd_table[2]->writable = true;
 		thread->t_fd_table[2]->readable = true;
 
