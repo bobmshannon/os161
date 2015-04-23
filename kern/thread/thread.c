@@ -121,7 +121,10 @@ struct thread *
 thread_create(const char *name)
 {
 	struct thread *thread;
-
+	struct vnode *stdin;
+	int i;
+	char path[] = "con:";
+	
 	DEBUGASSERT(name != NULL);
 
 	thread = kmalloc(sizeof(*thread));
@@ -159,8 +162,50 @@ thread_create(const char *name)
 	pid_t pid = add_process_entry(thread);
 	thread->t_pid = pid;
 	
-	if(pid > 1) {
-	//init_fd_table();
+	if(thread->t_pid > 1) {
+		vfs_open(path, O_RDONLY, 0644, &stdin);
+
+		/* stdin */
+		thread->t_fd_table[0] = kmalloc(sizeof(struct fd));
+		thread->t_fd_table[0]->flags = 0;
+		thread->t_fd_table[0]->offset = 0;
+		thread->t_fd_table[0]->ref_count = 0;
+		thread->t_fd_table[0]->vn = stdin;
+		thread->t_fd_table[0]->lock = lock_create("stdin");
+		thread->t_fd_table[0]->writable = true;
+		thread->t_fd_table[0]->readable = true;
+		
+		/* stdout */
+		thread->t_fd_table[1] = kmalloc(sizeof(struct fd));
+		thread->t_fd_table[1]->flags = 0;
+		thread->t_fd_table[1]->offset = 0;
+		thread->t_fd_table[1]->ref_count = 0;
+		thread->t_fd_table[1]->vn = stdin;
+		thread->t_fd_table[1]->lock = lock_create("stdout");
+		thread->t_fd_table[1]->writable = true;
+		thread->t_fd_table[1]->readable = false;
+
+		/* stderr */
+		thread->t_fd_table[2] = kmalloc(sizeof(struct fd));
+		thread->t_fd_table[2]->flags = 0;
+		thread->t_fd_table[2]->offset = 0;
+		thread->t_fd_table[2]->ref_count = 0;
+		thread->t_fd_table[2]->vn = stdin;
+		thread->t_fd_table[2]->lock = lock_create("stderr");
+		thread->t_fd_table[2]->writable = true;
+		thread->t_fd_table[2]->readable = true;
+
+		(void)i;
+		for(i = 3; i < OPEN_MAX; i++) {
+			thread->t_fd_table[i] = kmalloc(sizeof(struct fd));
+			thread->t_fd_table[i]->flags = 0;
+			thread->t_fd_table[i]->offset = 0;
+			thread->t_fd_table[i]->ref_count = 0;
+			thread->t_fd_table[i]->vn = NULL;
+			thread->t_fd_table[i]->lock = lock_create("fd lock");	
+			thread->t_fd_table[i]->writable = true;
+			thread->t_fd_table[i]->readable = true;		
+		}
 	}
 
 	return thread;
@@ -174,7 +219,7 @@ init_process_table() {
 	int i;
 	
 	for(i = 0; i < RUNNING_MAX; i++) {
-		process_table[i] = kmalloc(sizeof(struct process*));
+		process_table[i] = kmalloc(sizeof(struct process));
 		process_table[i]->pid = RUNNING_MAX + 1;	/* We're initializing these PID's to arbitrary values here. */
 		process_table[i]->ppid = RUNNING_MAX + 1;
  		process_table[i]->self = NULL;
@@ -199,7 +244,7 @@ init_fd_table(void) {
 	vfs_open(path, O_RDONLY, 0644, &stdin);
 
 	/* stdin */
-	curthread->t_fd_table[0] = kmalloc(sizeof(struct fd*));
+	curthread->t_fd_table[0] = kmalloc(sizeof(struct fd));
 	curthread->t_fd_table[0]->flags = 0;
 	curthread->t_fd_table[0]->offset = 0;
 	curthread->t_fd_table[0]->ref_count = 0;
@@ -209,7 +254,7 @@ init_fd_table(void) {
 	curthread->t_fd_table[0]->readable = true;
 	
 	/* stdout */
-	curthread->t_fd_table[1] = kmalloc(sizeof(struct fd*));
+	curthread->t_fd_table[1] = kmalloc(sizeof(struct fd));
 	curthread->t_fd_table[1]->flags = 0;
 	curthread->t_fd_table[1]->offset = 0;
 	curthread->t_fd_table[1]->ref_count = 0;
@@ -219,7 +264,7 @@ init_fd_table(void) {
 	curthread->t_fd_table[1]->readable = false;
 
 	/* stderr */
-	curthread->t_fd_table[2] = kmalloc(sizeof(struct fd*));
+	curthread->t_fd_table[2] = kmalloc(sizeof(struct fd));
 	curthread->t_fd_table[2]->flags = 0;
 	curthread->t_fd_table[2]->offset = 0;
 	curthread->t_fd_table[2]->ref_count = 0;
@@ -229,13 +274,16 @@ init_fd_table(void) {
 	curthread->t_fd_table[2]->readable = true;
 
 	(void)i;
-	/*for(i = 3; i < OPEN_MAX; i++) {
-		curthread->t_fd_table[i] = kmalloc(sizeof(struct fd*));
+	for(i = 3; i < OPEN_MAX; i++) {
+		curthread->t_fd_table[i] = kmalloc(sizeof(struct fd));
 		curthread->t_fd_table[i]->flags = 0;
 		curthread->t_fd_table[i]->offset = 0;
 		curthread->t_fd_table[i]->ref_count = 0;
-		curthread->t_fd_table[i]->vn = NULL;		
-	}*/
+		curthread->t_fd_table[i]->vn = NULL;
+		curthread->t_fd_table[i]->lock = lock_create("fd lock");	
+		curthread->t_fd_table[i]->writable = true;
+		curthread->t_fd_table[i]->readable = true;		
+	}
 } 
 
 /*
@@ -342,9 +390,6 @@ thread_destroy(struct thread *thread)
 
 	/* sheer paranoia */
 	thread->t_wchan_name = "DESTROYED";
-
-	/* Free up a slot in the process table */
-	remove_process_entry(thread->t_pid);
 
 	kfree(thread->t_name);
 	kfree(thread);
@@ -629,23 +674,6 @@ thread_fork(const char *name,
 
 	/* Thread subsystem fields */
 	newthread->t_cpu = curthread->t_cpu;
-
-	/* Copy file table from parent to child.
-	int i;
-	for(i = 0; i < OPEN_MAX; i++) {
-		newthread->t_fd_table[i] = kmalloc(sizeof(struct fd));
-		if(newthread->t_fd_table[i] == NULL) {
-			return -1;
-		}
-		newthread->t_fd_table[i]->readable = curthread->t_fd_table[i]->readable;
-		newthread->t_fd_table[i]->writable = curthread->t_fd_table[i]->writable;
-		newthread->t_fd_table[i]->flags = curthread->t_fd_table[i]->flags;
-		newthread->t_fd_table[i]->offset = curthread->t_fd_table[i]->offset;
-		newthread->t_fd_table[i]->ref_count = curthread->t_fd_table[i]->ref_count;
-		newthread->t_fd_table[i]->vn = curthread->t_fd_table[i]->vn;
-		newthread->t_fd_table[i]->lock = curthread->t_fd_table[i]->lock;
-		//newthread->t_fd_table[i]->lock = lock_create("lock");
-	} */ 
 
 	/* Copy parents address space */
 	struct addrspace **retaddr;
@@ -1028,9 +1056,15 @@ thread_exit(void)
 		cur->t_cwd = NULL;
 	}
 	
-	/* FD table */
-	if(cur->t_fd_table) {
-		(void)i;
+	/* Free up a slot in the process table */
+	remove_process_entry(curthread->t_pid);
+	
+	/* Free file descriptor table */
+	for(i = 0; i < OPEN_MAX; i++) {
+		if(cur->t_fd_table[i] != NULL) {
+			//lock_destroy(cur->t_fd_table[i]->lock);
+			kfree(cur->t_fd_table[i]);
+		}
 	}
 
 	/* VM fields */

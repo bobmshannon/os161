@@ -165,7 +165,7 @@ vaddr_t alloc_kpages(int n) {
 		if(i == end) {
 			coremap[i].is_last = true;
 		}
-		zero_page(coremap[i].vbase);
+		bzero((void *)coremap[i].vbase, PAGE_SIZE);
 		// modify additional fields where necessary here 
 	}
 	
@@ -362,7 +362,12 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
 			
 	    case VM_FAULT_WRITE: // 1
 			entry = curthread->t_addrspace->pages->firstentry;
-			while(entry != NULL && entry->page != NULL) {
+			while(entry != NULL) {
+				if(entry->page == NULL) {
+					entry = entry->next;
+					continue;
+				}
+				
 				lowerbound = (entry->page->as_vbase);
 				upperbound = lowerbound + PAGE_SIZE;
 					if(faultaddress < upperbound && faultaddress >= lowerbound) { 
