@@ -74,7 +74,8 @@ struct coremap_entry *coremap;
 struct spinlock coremap_lock;
 
 /* Global VM system fields */
-int npages;                          /* Number of pages available on system. */
+int npages;                          /* Number of pages on system. */
+int nfreepages;
 bool vm_bootstrapped;                /* Is the VM system bootstrapped? */
 paddr_t free_start;                  /* Pointer to first page's location in physical memory */
 

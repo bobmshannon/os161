@@ -70,6 +70,7 @@ void vm_bootstrap() {
 	free = ROUNDUP(free, PAGE_SIZE);                            /* make sure coremap takes up a whole page or more */
 	free_start = free;                                          /* update global VM field */
 	npages -= (free - lo) / PAGE_SIZE;		                    /* subtract number of page(s) taken up from coremap */
+	nfreepages = npages;
 	spinlock_init(&coremap_lock);								/* Synchronization */
 	
 	/* Initialize each page in the coremap */
@@ -166,6 +167,8 @@ vaddr_t alloc_kpages(int n) {
 			coremap[i].is_last = true;
 		}
 		bzero((void *)coremap[i].vbase, PAGE_SIZE);
+		//zero_page(coremap[i].vbase);
+		nfreepages--;
 		// modify additional fields where necessary here 
 	}
 	
@@ -225,8 +228,9 @@ void free_kpages(vaddr_t vaddr) {
 		coremap[index].is_permanent = false;
 		coremap[index].is_last = false;	
 		// modify additional fields here where necessary	
-		
 		spinlock_release(&coremap[index].lock);
+		
+		nfreepages++;
 	}
 	
 	if(spinlock_do_i_hold(&coremap_lock)) {

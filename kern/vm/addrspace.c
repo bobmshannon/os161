@@ -60,9 +60,6 @@ as_create(void)
 	as->heap_break = -1;
 	as->heap_max = -1;
 
-	as -> regions = kmalloc(sizeof(struct region_list));
-	as -> regions -> firstregion  = NULL;
-
 	as->pages->firstentry = kmalloc(sizeof(struct page_table_entry));
 	as->pages->firstentry->next = NULL;
 	as->pages->firstentry->prev = NULL;
@@ -90,8 +87,7 @@ as_copy(struct addrspace *old, struct addrspace **ret)
 	 * Note that the page table is just a doubly linked list 
 	 * whose data element is a pointer to a page in the coremap.
 	 */
-	//struct page_table_entry *oldentry = old->pages->firstentry;
-	struct page_table_entry *oldentry = old->pages->firstentry->next;
+	struct page_table_entry *oldentry = old->pages->firstentry;
 	struct page_table_entry *newentry = newas->pages->firstentry;
 
 	int src, dst;
@@ -101,6 +97,10 @@ as_copy(struct addrspace *old, struct addrspace **ret)
 	}
 		
 	while(oldentry != NULL) {
+		if(oldentry->page == NULL) {
+			oldentry = oldentry->next;
+			continue;
+		}
 		src = get_coremap_index(oldentry->page->vbase);
 		dst = alloc_page();
 		copy_page(src, dst);
@@ -129,21 +129,6 @@ as_copy(struct addrspace *old, struct addrspace **ret)
 		oldentry = oldentry->next;
 	}
 	
-	struct region *newregion, *oldregion;
-	oldregion = old -> regions -> firstregion;
-	newas->regions->firstregion = kmalloc(sizeof(struct region));
-	newregion = newas->regions->firstregion;
-	
-	while(oldregion != NULL){
-		newregion -> vaddr = oldregion -> vaddr;
-		newregion -> permissions = oldregion -> permissions;
-		newregion -> npages = oldregion -> npages;
-		
-		newregion->next = kmalloc(sizeof(struct region));
-		newregion = newregion -> next;
-		oldregion = oldregion -> next;
-	}
-
 	*ret = newas;
 	return 0;
 }
@@ -168,25 +153,6 @@ as_destroy(struct addrspace *as)
 	kfree(as->pages);
 	kfree(as);
 	
-	/* Mark each page free and then call kfree() where necessary */
-	/*
-	struct page_table_entry *ptentry;
-	struct page_table_entry *tempentry;
-	
-	ptentry = as -> pages -> firstentry;
-	while(ptentry != NULL){
-		tempentry = ptentry;
-		if(ptentry->page != NULL) {
-			free_page(ptentry -> page -> vbase);
-		}
-		ptentry = ptentry -> next;
-		kfree(tempentry);
-	}
-	
-	kfree(as->pages);
-	kfree(as->pages->firstentry);
-	kfree(as);
-	*/
 	(void)as;
 	
 }
@@ -218,8 +184,7 @@ as_define_region(struct addrspace *as, vaddr_t vaddr, size_t sz,
 	int n, i, index;
 	struct coremap_entry *page;
 	struct page_table_entry *pte;
-	struct region *nregion;
-	
+
 	/* Determine how many pages to allocate for this region */
 	n = ROUNDUP(sz, PAGE_SIZE);
 	n = n / PAGE_SIZE;
@@ -248,25 +213,6 @@ as_define_region(struct addrspace *as, vaddr_t vaddr, size_t sz,
 			spinlock_release(&coremap_lock);
 		}
 	}
-	
-	
-	if(as -> regions -> firstregion != NULL){
-		nregion = as -> regions -> firstregion;
-		nregion -> next = (struct region *)kmalloc(sizeof(struct region));
-		nregion = nregion -> next;
-		nregion -> next = NULL;		
-	}
-	else if(as -> regions -> firstregion == NULL){
-		as -> regions -> firstregion = (struct region *)kmalloc(sizeof(struct region));
-		as -> regions -> firstregion -> next = NULL;
-		nregion = as -> regions -> firstregion;
-	}
-	
-	nregion -> vaddr = vaddr;
-	nregion -> permissions = 7 & (readable | writeable | executable);
-	nregion -> npages = n;
-	
-	
 
 	return 0;
 }
@@ -299,13 +245,7 @@ as_prepare_load(struct addrspace *as)
 	  * Set permissions of each page to READ/WRITE to allow data
 	  * to be loaded into each segment of the address space.
 	  * i.e. arguments on the stack, the program code, etc.
-	struct page_table_entry *ptentry; 
-	 ptentry = as -> pages -> firstentry;
-	 while(ptentry != NULL){
-	 	ptentry -> page -> permissions = PAGE_READABLE | PAGE_WRITABLE;
-	 	
-	 	ptentry = ptentry -> next;
-	 } */
+	  */
 	(void)as;
 	return 0;
 }
@@ -324,10 +264,6 @@ as_complete_load(struct addrspace *as)
 int
 as_define_stack(struct addrspace *as, vaddr_t *stackptr)
 {
-	/*
-	 * Write this.
-	 */
-	 
 	as_define_region(as, USERSTACK-12*PAGE_SIZE, 12*PAGE_SIZE,
 			PAGE_READABLE, PAGE_WRITABLE, PAGE_EXECUTABLE);
 
