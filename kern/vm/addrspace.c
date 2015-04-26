@@ -101,28 +101,34 @@ as_copy(struct addrspace *old, struct addrspace **ret)
 			oldentry = oldentry->next;
 			continue;
 		}
-		src = get_coremap_index(oldentry->page->vbase);
-		dst = alloc_page();
-		copy_page(src, dst);
 		
-		/* Copy the page */
+		src = get_coremap_index(oldentry->page->vbase);
+		
+		/* Allocate a new page */
+		dst = alloc_page();
+		
+		/* Add new page table entry */
 		newentry->page = &coremap[dst];
 		newentry->next = kmalloc(sizeof(struct page_table_entry));
 		newentry->next->prev = newentry;
 		newentry->next->next = NULL;
 		
-		/* Update address space pointer in coremap entry */
+		/* Copy the page */
+		memcpy((void *)coremap[dst].vbase, (void *)coremap[src].vbase, PAGE_SIZE);
+		
+		/* Update coremap entry */
 		if(!spinlock_do_i_hold(&coremap_lock)) {
 			spinlock_acquire(&coremap_lock);
 		}
 		spinlock_acquire(&coremap[dst].lock);
 			
-		coremap[dst].as = newas; /* Do the update */
+			coremap[dst].permissions = coremap[src].permissions; 
+			coremap[dst].as = newas; 
 			
 		spinlock_release(&coremap[dst].lock);
 		if(spinlock_do_i_hold(&coremap_lock)) {
 			spinlock_release(&coremap_lock);
-		}
+		} 
 		
 		/* Go to next element each linked list */
 		newentry = newentry->next;
@@ -145,7 +151,6 @@ as_destroy(struct addrspace *as)
 			continue;
 		}
 		
-		free_kpages(entry->page->vbase);
 		tmp = entry;
 		entry = entry->next;
 		kfree(tmp);
