@@ -236,8 +236,8 @@ void * sys_sbrk(int inc) {
 	as_define_region(as, as->heap_start, inc,
 			 PAGE_READABLE, PAGE_WRITABLE, 0);
 			 
-	as->heap_end += inc;
-	
+	as->heap_end += ROUNDUP(as->heap_end + inc, PAGE_SIZE);
+	//as->heap_end += inc;
 	return (void *)as->heap_end;
 }
 
