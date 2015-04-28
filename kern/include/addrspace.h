@@ -61,8 +61,9 @@ struct addrspace {
     struct page_table *pages;   /* Page table */
 	struct page *heap_page;		/* Page mapped to heap region */
 	struct region_list *regions;
-	vaddr_t heap_break;			/* Heap break point */
-	vaddr_t heap_max;			/* Max heap break point */
+	vaddr_t heap_start;			/* Heap start point */
+	vaddr_t heap_end;			/* Heap end point */ 
+
 #endif
 };
 

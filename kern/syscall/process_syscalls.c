@@ -229,7 +229,15 @@ sys_execv(userptr_t progname, userptr_t args, int *errcode)
 }
 
 void * sys_sbrk(int inc) {
-	(void)inc;
-	return NULL;
+	struct addrspace *as = curthread->t_addrspace;
+	
+	KASSERT(as->heap_end + inc >= as->heap_start);
+	
+	as_define_region(as, as->heap_start, inc,
+			 PAGE_READABLE, PAGE_WRITABLE, 0);
+			 
+	as->heap_end += inc;
+	
+	return (void *)as->heap_end;
 }
 
