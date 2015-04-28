@@ -63,7 +63,7 @@ struct addrspace {
 	struct region_list *regions;
 	vaddr_t heap_start;			/* Heap start point */
 	vaddr_t heap_end;			/* Heap end point */ 
-
+	int n_heap_pages;			/* Number of heap pages */
 #endif
 };
 

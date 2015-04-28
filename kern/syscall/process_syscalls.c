@@ -233,11 +233,24 @@ void * sys_sbrk(int inc) {
 	
 	KASSERT(as->heap_end + inc >= as->heap_start);
 	
-	as_define_region(as, as->heap_start, inc,
-			 PAGE_READABLE, PAGE_WRITABLE, 0);
-			 
-	as->heap_end += ROUNDUP(as->heap_end + inc, PAGE_SIZE);
-	//as->heap_end += inc;
+	if(as->heap_end + inc >= as->heap_end) {
+		if(as->heap_end + inc <= as->heap_start + (as->n_heap_pages * PAGE_SIZE) ) {
+			// Just increment the heap end point.
+			as->heap_end += inc;	
+			return (void *)as->heap_end;
+		}
+		else {
+			as_define_region(as, as->heap_start + (as->n_heap_pages * PAGE_SIZE), 
+			inc, PAGE_READABLE, PAGE_WRITABLE, 0);	
+			as->heap_end += inc;
+			as->n_heap_pages += ROUNDUP(inc, PAGE_SIZE);
+			return (void *)as->heap_end;			
+		}
+	
+	}
+		 
+	//as->heap_end += ROUNDUP(as->heap_end + inc, 4);
+	as->heap_end += inc;
 	return (void *)as->heap_end;
 }
 

@@ -66,6 +66,7 @@ as_create(void)
 	as->heap_page = NULL;
 	as->heap_start = -1;
 	as->heap_end = -1;
+	as->n_heap_pages = 0;
 	
 	as->regions->firstregion->next = NULL;
 	as->regions->firstregion->vaddr = -1;
