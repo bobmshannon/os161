@@ -47,6 +47,7 @@
 #include <kern/wait.h>
 #include <mips/trapframe.h>
 #include <addrspace.h>
+#include <test.h>
 
 int 
 sys_waitpid(pid_t pid, userptr_t status, int options, int *errcode) {
@@ -196,25 +197,33 @@ int
 sys_execv(userptr_t progname, userptr_t args, int *errcode)
 {
 	size_t bytescopied;
-	char dest[PATH_MAX + 1];
+	char kprogname[PATH_MAX];
+	char kargs[PATH_MAX];
 	int err;
-
+	int nargs, i = 0;
 	(void)progname;
 	(void)args;
 	(void)errcode;
 	
 	/* Error checking. */
-	err = copyinstr(progname, dest, PATH_MAX, &bytescopied);
+	err = copyinstr(progname, kprogname, PATH_MAX, &bytescopied);
 	if(err != 0) {
 		(*errcode) = EFAULT;
 		return -1;
 	}
 	
-	err = copyinstr(args, dest, PATH_MAX, &bytescopied);
-	if(err != 0) {
-		(*errcode) = EFAULT;
-		return -1;
+
+	while(kargs[i] != 0) {
+		nargs++;
+		i++;
 	}
+	
+	if(curthread->t_addrspace != NULL) {
+		as_destroy(curthread->t_addrspace);
+		curthread->t_addrspace = NULL;
+	}
+	
+	runprogram(kprogname, args, nargs);
 	
 	return 0;
 }
