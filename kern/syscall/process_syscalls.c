@@ -228,3 +228,8 @@ sys_execv(userptr_t progname, userptr_t args, int *errcode)
 	return 0;
 }
 
+void * sys_sbrk(int inc) {
+	(void)inc;
+	return NULL;
+}
+
