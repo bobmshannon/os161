@@ -49,18 +49,29 @@ as_create(void)
 		return NULL;
 	}
 
-	/* Allocate page table */
+	/* Allocate some stuff */
 	as->pages = kmalloc(sizeof(struct page_table));
 	if(as->pages == NULL) {
 		return NULL;
 	}
+	as->pages->firstentry = kmalloc(sizeof(struct page_table_entry));
 	
-	/* Initialize */
+	as->regions = kmalloc(sizeof(struct region_list));
+	if(as->regions == NULL) {
+		return NULL;
+	}
+	as->regions->firstregion = kmalloc(sizeof(struct region));
+	
+	/* Initialize some stuff */
 	as->heap_page = NULL;
 	as->heap_break = -1;
 	as->heap_max = -1;
+	
+	as->regions->firstregion->next = NULL;
+	as->regions->firstregion->vaddr = -1;
+	as->regions->firstregion->npages = -1;
+	as->regions->firstregion->permissions = -1;
 
-	as->pages->firstentry = kmalloc(sizeof(struct page_table_entry));
 	as->pages->firstentry->next = NULL;
 	as->pages->firstentry->prev = NULL;
 	as->pages->firstentry->page = NULL;
@@ -145,6 +156,10 @@ as_destroy(struct addrspace *as)
 	struct page_table_entry *entry = as->pages->firstentry;
 	struct page_table_entry *tmp;
 	
+	struct region *region = as->regions->firstregion;
+	struct region *tmpregion;
+	
+	/* Free up page table */
 	while(entry != NULL) {
 		if(entry->page == NULL) {
 			entry = entry->next;
@@ -156,6 +171,16 @@ as_destroy(struct addrspace *as)
 		kfree(tmp);
 	}
 	kfree(as->pages);
+	
+	/* Free up region list */
+	while(region != NULL) {
+		tmpregion = region;
+		region = region->next;
+		kfree(tmpregion);
+	}
+	kfree(as->regions);
+	
+	/* Everything else */
 	kfree(as);
 	
 	(void)as;
@@ -186,7 +211,7 @@ int
 as_define_region(struct addrspace *as, vaddr_t vaddr, size_t sz,
 		 int readable, int writeable, int executable)
 {
-	int n, i, index;
+	int n, i, index, err;
 	struct coremap_entry *page;
 	struct page_table_entry *pte;
 
@@ -207,10 +232,10 @@ as_define_region(struct addrspace *as, vaddr_t vaddr, size_t sz,
 		}				
 		spinlock_acquire(&page->lock);
 			
-		pte = add_pte(as, page);	/* Add entry to page table */
-		page->permissions = readable | writeable | executable;/* Set page permission flags*/
-		page->as_vbase = vaddr;		/* Update base virtual address that page corresponds to (for TLB management)*/
-		vaddr +=PAGE_SIZE;		/* Increment base virtual address (for when a region takes up multiple pages)s*/
+		pte = add_pte(as, page);								/* Add entry to page table */
+		page->permissions = readable | writeable | executable;	/* Set page permission flags*/
+		page->as_vbase = vaddr;									/* Update base virtual address that page corresponds to (for TLB management)*/
+		vaddr +=PAGE_SIZE;										/* Increment base virtual address (for when a region takes up multiple pages)s*/
 		// modify additional fields here where necessary
 					
 		spinlock_release(&page->lock);
@@ -218,9 +243,44 @@ as_define_region(struct addrspace *as, vaddr_t vaddr, size_t sz,
 			spinlock_release(&coremap_lock);
 		}
 	}
+	
+	err = add_region(as, vaddr, n, readable | writeable | executable);
+	if(err) {
+		panic("vm: could not add region to address space region list\n");
+	}
 
 	return 0;
 }
+
+int add_region(struct addrspace *as, vaddr_t vaddr, int npages, int permissions) {
+	struct region *region = as->regions->firstregion;
+	struct region *tmp;
+	
+	/* Go to last node in linked list */
+	while(region != NULL) {
+		if((int)region->vaddr == -1) {
+			break;					// This node is free, use it to store the region information instead.
+		}
+		tmp = region;
+		region = region->next;
+	}
+	
+	if(region == NULL) {
+		region = kmalloc(sizeof(struct region));
+		tmp->next = region;
+		if(region == NULL) {
+			return ENOMEM;
+		}
+	}
+	
+	region->vaddr = vaddr;
+	region->npages = npages;
+	region->permissions = permissions;
+	region->next = NULL;
+	
+	return 0;
+}
+
 
 struct page_table_entry *
 add_pte(struct addrspace *as, struct coremap_entry *page) {

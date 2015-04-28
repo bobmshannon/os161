@@ -58,7 +58,7 @@ struct addrspace {
         size_t as_npages2;
         paddr_t as_stackpbase;
 #else
-    	struct page_table *pages;   /* Page table */
+    struct page_table *pages;   /* Page table */
 	struct page *heap_page;		/* Page mapped to heap region */
 	struct region_list *regions;
 	vaddr_t heap_break;			/* Heap break point */
@@ -73,6 +73,16 @@ struct page_table {
 	struct page_table_entry *firstentry;
 };
 
+struct page_table_entry {
+	struct page_table_entry *next;		/* Next page table entry */
+	struct page_table_entry *prev;		/* Previous page table entry */
+	struct coremap_entry *page;			/* Index of page in coremap */
+};
+
+
+/*
+ * Region list 
+ */
 struct region_list {
 	struct region *firstregion;
 };
@@ -82,17 +92,11 @@ struct region {
 	size_t npages;
 	int permissions;
 	struct region *next;
-	int first;
 };
 
-struct page_table_entry {
-	struct page_table_entry *next;		/* Next page table entry */
-	struct page_table_entry *prev;		/* Previous page table entry */
-	struct coremap_entry *page;			/* Index of page in coremap */
-};
 
 struct page_table_entry *add_pte(struct addrspace *as, struct coremap_entry *page);
-
+int add_region(struct addrspace *as, vaddr_t vaddr, int npages, int permissions);
 /*
  * Functions in addrspace.c:
  *
