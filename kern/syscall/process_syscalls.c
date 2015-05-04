@@ -233,6 +233,44 @@ void * sys_sbrk(int inc) {
 	
 	KASSERT(as->heap_end + inc >= as->heap_start);
 	
+	if(as->n_heap_pages == 0 && inc == 0) {
+			struct region *cur = as->regions->firstregion;
+			struct region *prev;
+			
+			while(cur != NULL) {
+				if(cur->next == NULL) {
+					break;
+				}
+				prev = cur;
+				cur = cur->next;
+			}
+			
+			as->heap_start = ROUNDUP(prev->vaddr + (prev->npages * PAGE_SIZE) + 1, PAGE_SIZE);
+			as->heap_end = as->heap_start;
+			as->n_heap_pages = 1;
+			
+			//as_define_region(as, as->heap_start, 
+			//PAGE_SIZE, PAGE_READABLE, PAGE_WRITABLE, 0);
+
+			return (void *)as->heap_start;
+	}
+	
+	if(as->heap_end + inc <= as->heap_start + (as->n_heap_pages * PAGE_SIZE)) {
+		vaddr_t oldbreak;
+		oldbreak = as->heap_end;
+		as->heap_end += inc;
+		return (void *)oldbreak;
+	}
+	
+	vaddr_t oldbreak;
+	oldbreak = as->heap_end;
+	as_define_region(as, as->heap_end, 
+	ROUNDUP(inc,PAGE_SIZE), PAGE_READABLE, PAGE_WRITABLE, 0);
+	as->n_heap_pages += ROUNDUP(inc,PAGE_SIZE);
+	as->heap_end += ROUNDUP(inc,PAGE_SIZE);
+	return (void *)oldbreak;
+	
+	/*
 	if(as->heap_end + inc >= as->heap_end) {
 		if(as->heap_end + inc <= as->heap_start + (as->n_heap_pages * PAGE_SIZE) ) {
 			// Just increment the heap end point.
@@ -247,10 +285,10 @@ void * sys_sbrk(int inc) {
 			return (void *)as->heap_end;			
 		}
 	
-	}
+	}*/
 		 
 	//as->heap_end += ROUNDUP(as->heap_end + inc, 4);
-	as->heap_end += inc;
+	//as->heap_end += inc;
 	return (void *)as->heap_end;
 }
 

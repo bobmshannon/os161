@@ -250,8 +250,8 @@ as_define_region(struct addrspace *as, vaddr_t vaddr, size_t sz,
 		panic("vm: could not add region to address space region list\n");
 	}
 	
-	as->heap_start += ROUNDUP(vaddr+sz, PAGE_SIZE);				/* Increment heap break point, making sure it is suitably aligned. */
-	as->heap_end = as->heap_start;
+	//as->heap_start += ROUNDUP(vaddr+sz, PAGE_SIZE);				/* Increment heap break point, making sure it is suitably aligned. */
+	//as->heap_end = as->heap_start;
 	
 	return 0;
 }
