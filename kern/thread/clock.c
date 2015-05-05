@@ -34,6 +34,7 @@
 #include <clock.h>
 #include <thread.h>
 #include <current.h>
+#include <vm.h>
 
 /*
  * Time handling.
@@ -91,7 +92,7 @@ hardclock(void)
 	/*
 	 * Collect statistics here as desired.
 	 */
-
+	 
 	curcpu->c_hardclocks++;
 	if ((curcpu->c_hardclocks % SCHEDULE_HARDCLOCKS) == 0) {
 		schedule();

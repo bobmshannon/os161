@@ -136,6 +136,7 @@ as_copy(struct addrspace *old, struct addrspace **ret)
 			
 			coremap[dst].permissions = coremap[src].permissions; 
 			coremap[dst].as = newas; 
+			coremap[dst].as_vbase = coremap[src].as_vbase;
 			
 		spinlock_release(&coremap[dst].lock);
 		if(spinlock_do_i_hold(&coremap_lock)) {
