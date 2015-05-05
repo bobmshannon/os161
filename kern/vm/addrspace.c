@@ -191,9 +191,7 @@ as_destroy(struct addrspace *as)
 void
 as_activate(struct addrspace *as)
 {
-	/*
-	 * Write this.
-	 */
+	vm_tlbshootdown_all();
 
 	(void)as;  // suppress warning until code gets written
 }

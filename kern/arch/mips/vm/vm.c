@@ -436,6 +436,11 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
 
 
 void vm_tlbshootdown_all(void) {
+	int i;
+	
+	for (i=0; i<NUM_TLB; i++) {
+		tlb_write(TLBHI_INVALID(i), TLBLO_INVALID(), i);
+	}
 
 }
 void vm_tlbshootdown(const struct tlbshootdown *t) {
