@@ -249,8 +249,8 @@ void * sys_sbrk(int inc) {
 			as->heap_end = as->heap_start;
 			as->n_heap_pages = 1;
 			
-			//as_define_region(as, as->heap_start, 
-			//PAGE_SIZE, PAGE_READABLE, PAGE_WRITABLE, 0);
+			as_define_region(as, as->heap_start, 
+			PAGE_SIZE, PAGE_READABLE, PAGE_WRITABLE, 0);
 
 			return (void *)as->heap_start;
 	}

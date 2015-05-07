@@ -375,9 +375,13 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
 				lowerbound = (entry->page->as_vbase);
 				upperbound = lowerbound + PAGE_SIZE;
 					if(faultaddress < upperbound && faultaddress >= lowerbound) { 
-/*  * This is the page we are looking for. Now, update the TLB with the proper virtual
-    * to physical address mapping, i.e. faultaddress --> (entry->page->vbase)*/
-						spl = splhigh();/* Walk through TLB and find an open slot */
+					   /*  
+					    * This is the page we are looking for. Now, update the TLB with the proper virtual
+						* to physical address mapping, i.e. (entry->page->vbase) --> (entry->page->pbase)
+						*/
+						spl = splhigh();
+						
+						/* Walk through TLB and find an open slot */
 						for (i=0; i<NUM_TLB; i++) {
 							tlb_read(&hi, &lo, i);
 							if (lo & TLBLO_VALID) {
@@ -387,9 +391,10 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
 							lo = entry->page->pbase | TLBLO_DIRTY | TLBLO_VALID; // Mark each entry as valid and writable for now.
 							DEBUG(DB_VM, "vm: 0x%08x -> 0x%08x; hi=0x%08x lo=0x%08x\n", faultaddress, entry->page->pbase, hi, lo);
 							tlb_write(hi, lo, i);
-							break;
+							splx(spl);
+							return 0;
 						}
-					
+						tlb_random(hi, lo);
 						splx(spl);
 						return 0;
 					}
