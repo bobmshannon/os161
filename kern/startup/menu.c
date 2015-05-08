@@ -147,7 +147,6 @@ common_prog(int nargs, char **args)
 		"synchronization-problems kernel.\n");
 #endif
 	
-	
 	cmdpid = thread_fork_pid(args[0],
 		cmd_progthread,
 		args, nargs,
@@ -156,31 +155,9 @@ common_prog(int nargs, char **args)
 	DEBUG(DB_KERN_MENU, "\nkernel: menu with pid #%d is running a command with forked pid #%d\n", curthread->t_pid, cmdpid);
 	DEBUG(DB_KERN_MENU, "\nkernel: menu waiting for forked pid #%d\n", cmdpid);
 
-	int *exitcode;
-	exitcode = kmalloc(sizeof(int));
-	
-	*exitcode = 0;
-	
-	//sys_waitpid(cmdpid, 0, 0, exitcode);
-	
 	while(!process_table[cmdpid]->has_exited) { }
 	
 	DEBUG(DB_KERN_MENU, "\nkernel: forked pid #%d has exited, menu is now awake\n", cmdpid);
-	
-	/* This is a really ugly (although temporary) hack to prevent 
-	 * the kernel menu and /testbin/fileonlytest from competing for stdout. 
-	 * This is required to make the test pass on ops-class.org until
-	 * waitpid() and exit() system calls are implemented.
-	 */ 
-	if(strlen(args[0]) == 21) {
-		//clocksleep(5); 
-	}
-	
-	//kprintf("running command with length %d\n",strlen(args[0]));
-	if(strlen(args[0]) == 17) {
-		//clocksleep(5);
-		//kprintf("\n(program name unknown): Complete.\n");
-	}
 
 	return 0;
 }

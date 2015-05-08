@@ -86,6 +86,7 @@ int tlb_probe(uint32_t entryhi, uint32_t entrylo);
 #define TLBLO_DIRTY   0x00000400
 #define TLBLO_VALID   0x00000200
 /*      TLBLO_GLOBAL  0x00000100 */
+#define TLBLO_DONTCARE   0x00000F00
 
 /*
  * Values for completely invalid TLB entries. The TLB entry index should
