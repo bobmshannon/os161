@@ -376,21 +376,55 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
 				lowerbound = (entry->page->as_vbase);
 				upperbound = lowerbound + PAGE_SIZE;
 					if(faultaddress < upperbound && faultaddress >= lowerbound) { 
-/*  * This is the page we are looking for. Now, update the TLB with the proper virtual
-    * to physical address mapping, i.e. faultaddress --> (entry->page->vbase)*/
-						spl = splhigh();/* Walk through TLB and find an open slot */
+					   /*  
+					    * This is the page we are looking for. Now, update the TLB with the proper virtual
+						* to physical address mapping, i.e. (entry->page->vbase) --> (entry->page->pbase)
+						*/
+						spl = splhigh();
+						
+						/* Walk through TLB and find an open slot */
 						for (i=0; i<NUM_TLB; i++) {
 							tlb_read(&hi, &lo, i);
 							if (lo & TLBLO_VALID) {
 								continue;
 							}
-							hi = faultaddress & 0xFFFFF000;
-							lo = entry->page->pbase | TLBLO_DIRTY | TLBLO_VALID; // Mark each entry as valid and writable for now.
+							
+							/* 
+							 * Generate a TLB Hi entry according to the below format
+							 * as defined by the MIPS architecture.
+							 * -----------------------------------------------------
+							 * |       VPN        |     PID     |     RESERVED     |
+							 * -----------------------------------------------------
+							 * 31               12  11          8  7               0
+							 *
+							 * Here, VPN is the upper 20 bits of the virtual address that
+							 * the user program accessed which caused the TLB fault. 
+							 * The PID bits represent the process ID of the process to which
+							 * this TLB entry belongs to.
+							 */
+							 hi = faultaddress & 0xFFFFF000;
+							
+							/* 
+							 * Generate a TLB Lo entry according to the below format
+							 * as defined by the MIPS architecture.
+							 * -----------------------------------------------------
+							 * |       PPN        |     MODE     |     RESERVED    |
+							 * -----------------------------------------------------
+							 * 31               12  11          8  7               0
+							 *
+							 * Here, PPN is the the pbase of the corresponding page
+							 * in the coremap.
+							 * The MODE bits set READ/WRITE/EXECUTION permissions, and should
+							 * match the permissions previously set in the coremap entry. 
+							 */
+							 lo = entry->page->pbase | TLBLO_DIRTY | TLBLO_VALID; // Mark each entry as valid and writable for now.
+							
 							DEBUG(DB_VM, "vm: 0x%08x -> 0x%08x; hi=0x%08x lo=0x%08x\n", faultaddress, entry->page->pbase, hi, lo);
 							tlb_write(hi, lo, i);
-							break;
+							splx(spl);
+							return 0;
 						}
-					
+						//tlb_random(hi, lo);
 						splx(spl);
 						return 0;
 					}
@@ -406,34 +440,6 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
 	
 	return 0;
 }
-
-/* 
- * Generate a TLB Lo entry according to the below format
- * as defined by the MIPS architecture.
- * -----------------------------------------------------
- * |       PPN        |     MODE     |     RESERVED    |
- * -----------------------------------------------------
- * 31               12  11          8  7               0
- *
- * Here, PPN is the the pbase of the corresponding page
- * in the coremap.
- * The MODE bits set READ/WRITE/EXECUTION permissions, and should
- * match the permissions previously set in the coremap entry. 
- */
-
-/* 
- * Generate a TLB Hi entry according to the below format
- * as defined by the MIPS architecture.
- * -----------------------------------------------------
- * |       VPN        |     PID     |     RESERVED     |
- * -----------------------------------------------------
- * 31               12  11          8  7               0
- *
- * Here, VPN is the upper 20 bits of the virtual address that
- * the user program accessed which caused the TLB fault. 
- * The PID bits represent the process ID of the process to which
- * this TLB entry belongs to.
- */
 
 
 void vm_tlbshootdown_all(void) {

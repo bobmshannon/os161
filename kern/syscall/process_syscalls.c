@@ -194,38 +194,53 @@ enter_forked_process(struct trapframe *tf_child) {
 }
 
 int 
-sys_execv(userptr_t progname, userptr_t args, int *errcode)
+sys_execv(userptr_t progname, char **args, int *errcode)
 {
-	size_t bytescopied;
-	char kprogname[PATH_MAX];
-	char kargs[PATH_MAX];
-	int err;
+	int pid;
 	int nargs, i = 0;
 	(void)progname;
 	(void)args;
 	(void)errcode;
-	
-	/* Error checking. */
-	err = copyinstr(progname, kprogname, PATH_MAX, &bytescopied);
-	if(err != 0) {
-		(*errcode) = EFAULT;
-		return -1;
-	}
-	
 
-	while(kargs[i] != 0) {
+	while(args[i] != NULL) {
 		nargs++;
 		i++;
 	}
 	
-	if(curthread->t_addrspace != NULL) {
-		as_destroy(curthread->t_addrspace);
-		curthread->t_addrspace = NULL;
-	}
+	/* Fork a new process and run the executable as a new thread. */
+	pid = thread_fork_pid(args[0],
+		sys_execv_thread,
+		args, nargs,
+		NULL);
 	
-	runprogram(kprogname, args, nargs);
+	/* 
+	 * Busy wait until the thread has exited. Indeed, this is cheesy,
+	 * but so is 90% of the OS/161 code base. 
+	 */
+	while(!process_table[pid]->has_exited) { }
 	
 	return 0;
+}
+
+void sys_execv_thread(void *ptr, unsigned long nargs) {
+	char **args = ptr;
+	char progname[128];
+	int result;
+	
+	KASSERT(nargs >= 1);
+
+	KASSERT(strlen(args[0]) < sizeof(progname));
+
+	strcpy(progname, args[0]);
+	
+	result = runprogram(progname, (userptr_t)args, nargs);
+	if (result) {
+		panic("call to execv failed.");
+		return;
+	}
+	
+	sys__exit(0);
+
 }
 
 void * sys_sbrk(int inc) {
@@ -249,8 +264,8 @@ void * sys_sbrk(int inc) {
 			as->heap_end = as->heap_start;
 			as->n_heap_pages = 1;
 			
-			//as_define_region(as, as->heap_start, 
-			//PAGE_SIZE, PAGE_READABLE, PAGE_WRITABLE, 0);
+			as_define_region(as, as->heap_start, 
+			PAGE_SIZE, PAGE_READABLE, PAGE_WRITABLE, 0);
 
 			return (void *)as->heap_start;
 	}

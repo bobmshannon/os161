@@ -289,6 +289,12 @@ struct page_table_entry *
 add_pte(struct addrspace *as, struct coremap_entry *page) {
 	struct page_table_entry *entry = as->pages->firstentry;
 	
+	if(entry->page == NULL) {
+		entry->page = page;
+		entry->next = NULL;
+		return entry;
+	}
+	
 	/* Traverse to the end of the linked list */
 	while(entry->next != NULL) {
 		entry = entry->next;
