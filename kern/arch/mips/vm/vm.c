@@ -363,6 +363,7 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
 	
 	switch(faulttype) {
 	    case VM_FAULT_READ:  // 0
+		
 			
 	    case VM_FAULT_WRITE: // 1
 			entry = curthread->t_addrspace->pages->firstentry;

@@ -232,10 +232,10 @@ as_define_region(struct addrspace *as, vaddr_t vaddr, size_t sz,
 		}				
 		spinlock_acquire(&page->lock);
 			
-		pte = add_pte(as, page);								/* Add entry to page table */
+		pte = add_pte(as, page);/* Add entry to page table */
 		page->permissions = readable | writeable | executable;	/* Set page permission flags*/
-		page->as_vbase = vaddr;									/* Update base virtual address that page corresponds to (for TLB management)*/
-		vaddr +=PAGE_SIZE;										/* Increment base virtual address (for when a region takes up multiple pages)s*/
+		page->as_vbase = vaddr;/* Update base virtual address that page corresponds to (for TLB management)*/
+		vaddr +=PAGE_SIZE;/* Increment base virtual address (for when a region takes up multiple pages)s*/
 		// modify additional fields here where necessary
 					
 		spinlock_release(&page->lock);
@@ -249,7 +249,7 @@ as_define_region(struct addrspace *as, vaddr_t vaddr, size_t sz,
 		panic("vm: could not add region to address space region list\n");
 	}
 	
-	//as->heap_start += ROUNDUP(vaddr+sz, PAGE_SIZE);				/* Increment heap break point, making sure it is suitably aligned. */
+	//as->heap_start += ROUNDUP(vaddr+sz, PAGE_SIZE);/* Increment heap break point, making sure it is suitably aligned. */
 	//as->heap_end = as->heap_start;
 	
 	return 0;
@@ -262,7 +262,7 @@ int add_region(struct addrspace *as, vaddr_t vaddr, int npages, int permissions)
 	/* Go to last node in linked list */
 	while(region != NULL) {
 		if((int)region->vaddr == -1) {
-			break;					// This node is free, use it to store the region information instead.
+			break;// This node is free, use it to store the region information instead.
 		}
 		tmp = region;
 		region = region->next;
