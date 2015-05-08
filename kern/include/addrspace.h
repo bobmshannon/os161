@@ -78,6 +78,8 @@ struct page_table_entry {
 	struct page_table_entry *next;		/* Next page table entry */
 	struct page_table_entry *prev;		/* Previous page table entry */
 	struct coremap_entry *page;			/* Index of page in coremap */
+	bool is_on_disk;
+	off_t disk_locale;
 };
 
 

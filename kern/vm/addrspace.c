@@ -167,7 +167,11 @@ as_destroy(struct addrspace *as)
 			entry = entry->next;
 			continue;
 		}
-		
+		if(entry->disk_locale > 0)
+		{
+			swap_free(entry->disk_locale);
+		}
+		entry->is_on_disk = false;
 		tmp = entry;
 		entry = entry->next;
 		kfree(tmp);
@@ -291,6 +295,8 @@ add_pte(struct addrspace *as, struct coremap_entry *page) {
 	
 	if(entry->page == NULL) {
 		entry->page = page;
+		entry->is_on_disk = false;
+		entry->disk_locale = swap_alloc();
 		entry->next = NULL;
 		return entry;
 	}
@@ -305,6 +311,8 @@ add_pte(struct addrspace *as, struct coremap_entry *page) {
 	entry->next->prev = entry;
 	entry->next->next = NULL;
 	entry->next->page = page;
+	entry->next->is_on_disk = false;
+	entry->next->disk_locale = swap_alloc();
 	
 	entry = entry->next;
 	

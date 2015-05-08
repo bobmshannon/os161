@@ -32,6 +32,7 @@
 
 
 #include <synch.h>
+#include <uio.h>
 
 /* Define a default page size of 4KB */
 #define PAGE_SIZE 4096
@@ -106,6 +107,13 @@ int get_coremap_index(vaddr_t vbase);
 /* TLB shootdown handling called from interprocessor_interrupt */
 void vm_tlbshootdown_all(void);
 void vm_tlbshootdown(const struct tlbshootdown *t);
+
+/* Swapping */
+void swap_bootstrap(void);
+off_t swap_alloc(void);
+void swap_free(off_t swap_addr);
+void swap_to_mem(paddr_t pa, off_t swap_addr);
+void swap_to_disk(paddr_t pa, off_t swap_addr);
 
 
 #endif /* _VM_H_ */
