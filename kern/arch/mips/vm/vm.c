@@ -430,7 +430,7 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
 					}
 					entry = entry->next;
 				}
-			return EINVAL;
+			//thread_exit();
 	    case VM_FAULT_READONLY: // 2
 				// Kill thread for violating access permissions.
 			return 0;
