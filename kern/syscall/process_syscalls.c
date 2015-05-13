@@ -262,7 +262,7 @@ void * sys_sbrk(int inc) {
 			
 			as->heap_start = ROUNDUP(prev->vaddr + (prev->npages * PAGE_SIZE) + 1, PAGE_SIZE);
 			as->heap_end = as->heap_start;
-			as->n_heap_pages = 12;
+			as->n_heap_pages = 24;
 			
 			as_define_region(as, as->heap_start, 
 			24 * PAGE_SIZE, PAGE_READABLE, PAGE_WRITABLE, 0);
