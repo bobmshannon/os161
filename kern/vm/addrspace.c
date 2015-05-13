@@ -163,10 +163,6 @@ as_destroy(struct addrspace *as)
 	
 	/* Free up page table */
 	while(entry != NULL) {
-		if(entry->page == NULL) {
-			entry = entry->next;
-			continue;
-		}
 		if(entry->disk_locale > 0)
 		{
 			swap_free(entry->disk_locale);
@@ -176,7 +172,7 @@ as_destroy(struct addrspace *as)
 		entry = entry->next;
 		kfree(tmp);
 	}
-	kfree(as->pages);
+	//kfree(as->pages);
 	
 	/* Free up region list */
 	while(region != NULL) {
@@ -184,7 +180,7 @@ as_destroy(struct addrspace *as)
 		region = region->next;
 		kfree(tmpregion);
 	}
-	kfree(as->regions);
+	//kfree(as->regions);
 	
 	/* Everything else */
 	kfree(as);
